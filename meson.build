@@ -34,6 +34,7 @@ dxvk_extradep = [ ]
 
 if dxvk_winelib
   lib_vulkan  = declare_dependency(link_args: [ '-lwinevulkan' ])
+  lib_d3d9    = declare_dependency(link_args: [ '-ld3d9' ])
   lib_d3d11   = declare_dependency(link_args: [ '-ld3d11' ])
   lib_dxgi    = declare_dependency(link_args: [ '-ldxgi' ])
   lib_d3dcompiler_43 = declare_dependency(link_args: [ '-L'+dxvk_library_path, '-ld3dcompiler_43' ])
@@ -44,6 +45,7 @@ if dxvk_winelib
   def_spec_ext = '.spec'
 else
   lib_vulkan  = dxvk_compiler.find_library('vulkan-1', dirs : dxvk_library_path)
+  lib_d3d9    = dxvk_compiler.find_library('d3d9')
   lib_d3d11   = dxvk_compiler.find_library('d3d11')
   lib_dxgi    = dxvk_compiler.find_library('dxgi')
   lib_d3dcompiler_43 = dxvk_compiler.find_library('d3dcompiler_43', dirs : dxvk_library_path)
