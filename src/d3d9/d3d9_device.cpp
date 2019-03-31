@@ -1070,12 +1070,29 @@ namespace dxvk {
   }
 
   HRESULT STDMETHODCALLTYPE Direct3DDevice9Ex::SetClipPlane(DWORD Index, const float* pPlane) {
-    Logger::warn("Direct3DDevice9Ex::SetClipPlane: Stub");
+    if (Index >= caps::MaxClipPlanes || !pPlane)
+      return D3DERR_INVALIDCALL;
+    
+    bool dirty = false;
+    
+    for (uint32_t i = 0; i < 4; i++) {
+      dirty |= m_state.clipPlanes[Index].coeff[i] != pPlane[i];
+      m_state.clipPlanes[Index].coeff[i] = pPlane[i];
+    }
+    
+    if (dirty)
+      m_flags.set(D3D9DeviceFlag::DirtyClipPlanes);
+    
     return D3D_OK;
   }
 
   HRESULT STDMETHODCALLTYPE Direct3DDevice9Ex::GetClipPlane(DWORD Index, float* pPlane) {
-    Logger::warn("Direct3DDevice9Ex::GetClipPlane: Stub");
+    if (Index >= caps::MaxClipPlanes || !pPlane)
+      return D3DERR_INVALIDCALL;
+    
+    for (uint32_t i = 0; i < 4; i++)
+      pPlane[i] = m_state.clipPlanes[Index].coeff[i];
+    
     return D3D_OK;
   }
 
@@ -1143,6 +1160,10 @@ namespace dxvk {
         case D3DRS_CULLMODE:
         case D3DRS_FILLMODE:
           m_flags.set(D3D9DeviceFlag::DirtyRasterizerState);
+          break;
+
+        case D3DRS_CLIPPLANEENABLE:
+          m_flags.set(D3D9DeviceFlag::DirtyClipPlanes);
           break;
 
         default:
@@ -2975,29 +2996,21 @@ namespace dxvk {
 
   void Direct3DDevice9Ex::CreateConstantBuffers() {
     DxvkBufferCreateInfo info;
-    info.size  = D3D9ConstantSets::SetSize;
+    info.size   = D3D9ConstantSets::SetSize;
+    info.usage  = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
+    info.access = VK_ACCESS_UNIFORM_READ_BIT;
+    info.stages = VK_PIPELINE_STAGE_VERTEX_SHADER_BIT
+                | VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
 
-    info.usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT
-               | VK_BUFFER_USAGE_TRANSFER_DST_BIT
-               | VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
-
-    info.stages = VK_PIPELINE_STAGE_TRANSFER_BIT
-                | VK_PIPELINE_STAGE_HOST_BIT;
-
-    info.access = VK_ACCESS_TRANSFER_READ_BIT
-                | VK_ACCESS_TRANSFER_WRITE_BIT
-                | VK_ACCESS_UNIFORM_READ_BIT
-                | VK_ACCESS_HOST_WRITE_BIT;
-
-    VkMemoryPropertyFlags memoryFlags = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT
+    VkMemoryPropertyFlags memoryFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT
+                                      | VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT
                                       | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
 
-    info.stages |=  VK_PIPELINE_STAGE_VERTEX_SHADER_BIT;
     m_vsConst.buffer = m_dxvkDevice->createBuffer(info, memoryFlags);
-    info.stages &= ~VK_PIPELINE_STAGE_VERTEX_SHADER_BIT;
-
-    info.stages |=  VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
     m_psConst.buffer = m_dxvkDevice->createBuffer(info, memoryFlags);
+
+    info.size = caps::MaxClipPlanes * sizeof(D3D9ClipPlane);
+    m_vsClipPlanes = m_dxvkDevice->createBuffer(info, memoryFlags);
 
     auto BindConstantBuffer = [this](
       DxsoProgramType     shaderStage,
@@ -3011,14 +3024,16 @@ namespace dxvk {
         cSlotId = slotId,
         cBuffer = buffer
       ] (DxvkContext* ctx) {
-        ctx->bindResourceBuffer(
-          cSlotId,
-          DxvkBufferSlice(cBuffer, 0, D3D9ConstantSets::SetSize));
+        ctx->bindResourceBuffer(cSlotId,
+          DxvkBufferSlice(cBuffer, 0, cBuffer->info().size));
       });
     };
 
     BindConstantBuffer(DxsoProgramType::VertexShader, m_vsConst.buffer, DxsoConstantBuffers::VSConstantBuffer);
     BindConstantBuffer(DxsoProgramType::PixelShader,  m_psConst.buffer, DxsoConstantBuffers::PSConstantBuffer);
+    BindConstantBuffer(DxsoProgramType::VertexShader, m_vsClipPlanes,   DxsoConstantBuffers::VSClipPlanes);
+    
+    m_flags.set(D3D9DeviceFlag::DirtyClipPlanes);
   }
 
   void Direct3DDevice9Ex::UploadConstants(DxsoProgramType ShaderStage) {
@@ -3043,6 +3058,26 @@ namespace dxvk {
 
     EmitCs([
       cBuffer = constSet.buffer,
+      cSlice  = slice
+    ] (DxvkContext* ctx) {
+      ctx->invalidateBuffer(cBuffer, cSlice);
+    });
+  }
+  
+  void Direct3DDevice9Ex::UpdateClipPlanes() {
+    m_flags.clr(D3D9DeviceFlag::DirtyClipPlanes);
+    
+    auto slice = m_vsClipPlanes->allocSlice();
+    auto dst = reinterpret_cast<D3D9ClipPlane*>(slice.mapPtr);
+    
+    for (uint32_t i = 0; i < caps::MaxClipPlanes; i++) {
+      dst[i] = (m_state.renderStates[D3DRS_CLIPPLANEENABLE] & (1 << i))
+        ? m_state.clipPlanes[i]
+        : D3D9ClipPlane();
+    }
+    
+    EmitCs([
+      cBuffer = m_vsClipPlanes,
       cSlice  = slice
     ] (DxvkContext* ctx) {
       ctx->invalidateBuffer(cBuffer, cSlice);
@@ -3393,6 +3428,9 @@ namespace dxvk {
 
     if (m_flags.test(D3D9DeviceFlag::DirtyRasterizerState))
       BindRasterizerState();
+    
+    if (m_flags.test(D3D9DeviceFlag::DirtyClipPlanes))
+      UpdateClipPlanes();
 
     UpdateConstants();
   }
