@@ -96,6 +96,29 @@ namespace dxvk {
     return D3D_OK;
   }
 
+  HRESULT D3D9StateBlock::SetStreamSourceFreq(
+          UINT StreamNumber,
+          UINT Setting) {
+     if ((Setting & D3DSTREAMSOURCE_INDEXEDDATA) == D3DSTREAMSOURCE_INDEXEDDATA) {
+      m_state.instanceCount = Setting & ~D3DSTREAMSOURCE_INDEXEDDATA;
+      m_captures.instanceCount = true;
+     } else if ((Setting & D3DSTREAMSOURCE_INSTANCEDATA) == D3DSTREAMSOURCE_INSTANCEDATA) {
+      m_state.instanceDataStepRates[StreamNumber] = Setting & ~D3DSTREAMSOURCE_INSTANCEDATA;
+      m_captures.instanceDataStepRates[StreamNumber] = true;
+    } else {
+      if (StreamNumber == 0) {
+        m_state.instanceCount = 1;
+        m_captures.instanceCount = true;
+      }
+
+      m_state.instanceDataStepRates[StreamNumber] = 0;
+      m_captures.instanceDataStepRates[StreamNumber] = true;
+    }
+
+    m_captures.flags.set(D3D9CapturedStateFlag::Instancing);
+    return D3D_OK;
+  }
+
   HRESULT D3D9StateBlock::SetStateTexture(DWORD StateSampler, IDirect3DBaseTexture9* pTexture) {
     TextureChangePrivate(m_state.textures[StateSampler], pTexture);
 

@@ -1532,11 +1532,13 @@ namespace dxvk {
       cState           = InputAssemblyState(PrimitiveType),
       cIndexCount      = VertexCount       (PrimitiveType, PrimitiveCount),
       cStartIndex      = StartIndex,
-      cBaseVertexIndex = BaseVertexIndex
+      cBaseVertexIndex = BaseVertexIndex,
+      cInstanceCount   = m_state.instanceCount
     ](DxvkContext* ctx) {
       ctx->setInputAssemblyState(cState);
       ctx->drawIndexed(
-        cIndexCount, 1,
+        cIndexCount,
+        cInstanceCount,
         cStartIndex,
         cBaseVertexIndex, 0);
     });
@@ -1953,12 +1955,47 @@ namespace dxvk {
   }
 
   HRESULT STDMETHODCALLTYPE Direct3DDevice9Ex::SetStreamSourceFreq(UINT StreamNumber, UINT Setting) {
-    Logger::warn("Direct3DDevice9Ex::SetStreamSourceFreq: Stub");
+    auto lock = LockDevice();
+
+    if (StreamNumber >= caps::MaxStreams
+      || Setting == 0
+      || (Setting & D3DSTREAMSOURCE_INDEXEDDATA) == D3DSTREAMSOURCE_INDEXEDDATA && (Setting & D3DSTREAMSOURCE_INSTANCEDATA == D3DSTREAMSOURCE_INSTANCEDATA)
+      || (Setting & D3DSTREAMSOURCE_INDEXEDDATA) == D3DSTREAMSOURCE_INDEXEDDATA && StreamNumber != 0 //IndexData must always be stream 0
+      || (Setting & D3DSTREAMSOURCE_INSTANCEDATA) == D3DSTREAMSOURCE_INSTANCEDATA && StreamNumber == 0) //InstanceData must not be stream 0
+      return D3DERR_INVALIDCALL;
+
+    if (unlikely(ShouldRecord()))
+      return m_recorder->SetStreamSourceFreq(
+        StreamNumber,
+        Setting);
+
+    if ((Setting & D3DSTREAMSOURCE_INDEXEDDATA) == D3DSTREAMSOURCE_INDEXEDDATA)
+      m_state.instanceCount = Setting & ~D3DSTREAMSOURCE_INDEXEDDATA;
+    else if ((Setting & D3DSTREAMSOURCE_INSTANCEDATA) == D3DSTREAMSOURCE_INSTANCEDATA)
+      m_state.instanceDataStepRates[StreamNumber] = Setting & ~D3DSTREAMSOURCE_INSTANCEDATA;
+    else {
+      if (StreamNumber == 0)
+        m_state.instanceCount = 1;
+
+      m_state.instanceDataStepRates[StreamNumber] = 0;
+    }
+
+    m_flags.set(D3D9DeviceFlag::DirtyInputLayout);
     return D3D_OK;
   }
 
   HRESULT STDMETHODCALLTYPE Direct3DDevice9Ex::GetStreamSourceFreq(UINT StreamNumber, UINT* pSetting) {
-    Logger::warn("Direct3DDevice9Ex::GetStreamSourceFreq: Stub");
+    auto lock = LockDevice();
+
+    if (StreamNumber >= caps::MaxStreams
+      || pSetting == nullptr)
+      return D3DERR_INVALIDCALL;
+
+    if (StreamNumber == 0)
+      *pSetting = m_state.instanceCount | D3DSTREAMSOURCE_INDEXEDDATA;
+    else
+      *pSetting = m_state.instanceDataStepRates[StreamNumber] | D3DSTREAMSOURCE_INSTANCEDATA;
+
     return D3D_OK;
   }
 
@@ -2614,6 +2651,13 @@ namespace dxvk {
       float plane[4] = { 0, 0, 0, 0 };
       SetClipPlane(i, plane);
     }
+
+    for (uint32_t i = 0; i < caps::MaxStreams; i++) {
+      m_state.vertexBuffers[i]         = D3D9VBO();
+      m_state.instanceDataStepRates[i] = 0;
+    }
+    m_state.instanceCount = 1;
+    m_flags.set(D3D9DeviceFlag::DirtyInputLayout);
 
     Flush();
     SynchronizeCsThread();
@@ -3917,9 +3961,9 @@ namespace dxvk {
         attrList.at(i) = attrib;
 
         DxvkVertexBinding binding;
-        binding.binding   = attrib.binding; // TODO: Instancing
-        binding.fetchRate = 0;
-        binding.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
+        binding.binding   = attrib.binding;
+        binding.fetchRate = m_state.instanceDataStepRates[attrib.binding];
+        binding.inputRate = m_state.instanceDataStepRates[attrib.binding] != 0 ? VK_VERTEX_INPUT_RATE_INSTANCE : VK_VERTEX_INPUT_RATE_VERTEX;
 
         // Check if the binding was already defined.
         bool bindingDefined = false;

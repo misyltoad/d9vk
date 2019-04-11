@@ -52,6 +52,8 @@ namespace dxvk {
             UINT                    OffsetInBytes,
             UINT                    Stride);
 
+    HRESULT STDMETHODCALLTYPE SetStreamSourceFreq(UINT StreamNumber, UINT Setting);
+
     HRESULT SetStateTexture(DWORD StateSampler, IDirect3DBaseTexture9* pTexture);
 
     HRESULT SetVertexShader(D3D9VertexShader* pShader);
@@ -204,6 +206,15 @@ namespace dxvk {
         }
 
         dst->SetPixelBoolBitfield(boolMask, src->psConsts.hardware.boolBitfield);
+      }
+
+      if (m_captures.flags.test(D3D9CapturedStateFlag::Instancing)) {
+        for (uint32_t i = 0; i < caps::MaxStreams; i++) {
+          if (m_captures.instanceDataStepRates[i])
+            dst->SetStreamSourceFreq(i, D3DSTREAMSOURCE_INSTANCEDATA | m_state.instanceDataStepRates[i]);
+        }
+        if (m_captures.instanceCount)
+          dst->SetStreamSourceFreq(0, D3DSTREAMSOURCE_INDEXEDDATA | m_state.instanceCount);
       }
     }
 

@@ -53,6 +53,8 @@ namespace dxvk {
       SamplerCount>                                  samplerStates;
 
     std::array<D3D9VBO, caps::MaxStreams>            vertexBuffers;
+    uint32_t                                         instanceCount = 1;
+    std::array<uint32_t, caps::MaxStreams>           instanceDataStepRates;
 
     std::array<
       IDirect3DBaseTexture9*,
@@ -122,7 +124,8 @@ namespace dxvk {
     ScissorRect,
     ClipPlanes,
     VsConstants,
-    PsConstants
+    PsConstants,
+    Instancing
   };
 
   using D3D9CapturedStateFlags = Flags<D3D9CapturedStateFlag>;
@@ -140,6 +143,9 @@ namespace dxvk {
     std::bitset<caps::MaxStreams>                       vertexBuffers;
     std::bitset<SamplerCount>                           textures;
     std::bitset<caps::MaxClipPlanes>                    clipPlanes;
+
+    std::bitset<caps::MaxStreams>                       instanceDataStepRates;
+    bool                                                instanceCount;
 
     struct {
       std::bitset<caps::MaxFloatConstants>              fConsts;
