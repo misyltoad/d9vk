@@ -1,5 +1,3 @@
-#pragma once
-
 #include "util_matrix.h"
 
 namespace dxvk {
