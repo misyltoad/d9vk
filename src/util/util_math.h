@@ -20,9 +20,10 @@ namespace dxvk {
 
   // Equivelant of std::clamp for use with floating point numbers
   // Handles (-){INFINITY,NAN} cases.
+  // Will return min in cases of NAN, etc.
   inline float fclamp(float value, float min, float max) {
-    return std::fmax(
-      std::fmin(value, max), min);
+    return std::fmin(
+      std::fmax(value, min), max);
   }
   
 }
