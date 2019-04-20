@@ -11,6 +11,7 @@ namespace dxvk::hud {
     { "drawcalls",    HudElement::StatDrawCalls     },
     { "submissions",  HudElement::StatSubmissions   },
     { "pipelines",    HudElement::StatPipelines     },
+    { "samplers",     HudElement::StatSamplers     },
     { "memory",       HudElement::StatMemory        },
     { "gpuload",      HudElement::StatGpuLoad       },
     { "version",      HudElement::DxvkVersion       },
