@@ -448,6 +448,8 @@ namespace dxvk {
     DxvkStatCounters            m_statCounters;
     
     DxvkDeviceQueueSet          m_queues;
+
+    std::atomic<uint32_t>       m_numSamplers = { 0 };
     
     DxvkRecycler<DxvkCommandList,    16> m_recycledCommandLists;
     DxvkRecycler<DxvkDescriptorPool, 16> m_recycledDescriptorPools;
