@@ -4,6 +4,14 @@ A Vulkan-based translation layer for Direct3D 10/11 which allows running 3D appl
 
 For the current status of the project, please refer to the [project wiki](https://github.com/doitsujin/dxvk/wiki).
 
+## For 32 bit games
+A 32 bit vulkan loader is needed for running 32 bit games (which most dx9 games are). If wine crashes with this error
+`wine: Call from 0x7bc81b89 to unimplemented function vulkan-1.dll.vkGetInstanceProcAddr, aborting`
+
+`wine: Unimplemented function vulkan-1.dll.vkGetInstanceProcAddr called at address 0x7bc81b89 (thread 00f6), starting debugger...`
+
+you are missing the 32 bit vulkan loader. Install it using this command `sudo apt install libvulkan1:i386`
+
 
 ## How to use
 In order to install a DXVK package obtained from the [release](https://github.com/doitsujin/dxvk/releases) page into a given wine prefix, run the following commands from within the DXVK directory:
