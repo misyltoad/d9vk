@@ -49,6 +49,7 @@ namespace dxvk {
     DirtyViewportScissor,
     UpDirtiedVertices,
     UpDirtiedIndices,
+    ValidSampleMask,
     ExtendedDevice
   };
 
@@ -683,6 +684,11 @@ namespace dxvk {
     void BindFramebuffer();
 
     void BindViewportAndScissor();
+
+    inline bool IsAlphaToCoverageEnabled() {
+      return m_hackState.alphaToCoverage == D3D9AlphaToCoverageState::Enabled
+          || m_hackState.alphaToCoverage == D3D9AlphaToCoverageState::ForceEnabled;
+    }
     
     void BindMultiSampleState(bool atoc);
 

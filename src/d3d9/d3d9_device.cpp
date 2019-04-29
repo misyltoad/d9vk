@@ -965,6 +965,16 @@ namespace dxvk {
     if (RenderTargetIndex == 0) {
       const auto* desc = m_state.renderTargets[0]->GetCommonTexture()->Desc();
 
+      bool validSampleMask = desc.MultiSampleType > D3DMULTISAMPLE_NONMASKABLE;
+
+      if (validSampleMask != m_flags.test(D3D9DeviceFlag::ValidSampleMask)) {
+        m_flags.clr(D3D9DeviceFlag::ValidSampleMask);
+        if (validSampleMask)
+          m_flags.set(D3D9DeviceFlag::ValidSampleMask);
+
+        BindMultiSampleState(this->IsAlphaToCoverageEnabled());
+      }
+
       D3DVIEWPORT9 viewport;
       viewport.X = 0;
       viewport.Y = 0;
@@ -1250,9 +1260,7 @@ namespace dxvk {
     if (likely(changed)) {
       states[State] = Value;
 
-      bool prevAtocEnabled =
-         m_hackState.alphaToCoverage == D3D9AlphaToCoverageState::Enabled
-      || m_hackState.alphaToCoverage == D3D9AlphaToCoverageState::ForceEnabled;
+      bool prevAtocEnabled = this->IsAlphaToCoverageEnabled();
 
       if (State == D3DRS_POINTSIZE) {
         if (Value == hacks::PointSize::AlphaToCoverageDisabled
@@ -1287,9 +1295,7 @@ namespace dxvk {
           m_hackState.alphaToCoverage = D3D9AlphaToCoverageState::Enabled;
       }
 
-      bool newAtocEnabled =
-         m_hackState.alphaToCoverage == D3D9AlphaToCoverageState::Enabled
-      || m_hackState.alphaToCoverage == D3D9AlphaToCoverageState::ForceEnabled;
+      bool newAtocEnabled = this->IsAlphaToCoverageEnabled();
 
       if (prevAtocEnabled != newAtocEnabled)
         BindMultiSampleState(newAtocEnabled);
@@ -1317,6 +1323,11 @@ namespace dxvk {
 
         case D3DRS_BLENDFACTOR:
           BindBlendFactor();
+          break;
+
+        case D3DRS_MULTISAMPLEMASK:
+          if (m_flags.test(D3D9DeviceFlag::ValidSampleMask))
+            BindMultiSampleState(atoc);
           break;
 
         case D3DRS_ZENABLE:
@@ -3753,7 +3764,9 @@ namespace dxvk {
 
   void Direct3DDevice9Ex::BindMultiSampleState(bool atoc) {
     DxvkMultisampleState msState;
-    msState.sampleMask            = 0xffffffff;
+    msState.sampleMask            = m_flags.test(D3D9DeviceFlag::ValidSampleMask)
+      ? m_state.renderStates[D3DRS_MULTISAMPLEMASK]
+      : 0xffffffff;    
     msState.enableAlphaToCoverage = atoc;
 
     EmitCs([
