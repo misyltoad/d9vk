@@ -686,8 +686,8 @@ namespace dxvk {
     void BindViewportAndScissor();
 
     inline bool IsAlphaToCoverageEnabled() {
-      return m_hackState.alphaToCoverage == D3D9AlphaToCoverageState::Enabled
-          || m_hackState.alphaToCoverage == D3D9AlphaToCoverageState::ForceEnabled;
+      return m_hackState.atoc == D3D9AlphaToCoverageState::Enabled
+          || m_hackState.atoc == D3D9AlphaToCoverageState::ForceEnabled;
     }
     
     void BindMultiSampleState(bool atoc);
@@ -822,7 +822,7 @@ namespace dxvk {
     Com<D3D9StateBlock>             m_recorder;
     Direct3DMultithread9            m_multithread;
 
-    D3D9ExtensionState              m_hackState;
+    D3D9VendorHackState             m_hackState;
 
     Rc<D3D9ShaderModuleSet>         m_shaderModules;
 

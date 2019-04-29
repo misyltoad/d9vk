@@ -91,7 +91,7 @@ namespace dxvk {
     WaitingForAlphaTest,
     Enabled,
     ForceEnabled
-  }
+  };
 
   struct D3D9VendorHackState {
     D3D9AlphaToCoverageState atoc = D3D9AlphaToCoverageState::Disabled;
