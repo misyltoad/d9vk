@@ -684,6 +684,8 @@ namespace dxvk {
 
     void BindViewportAndScissor();
     
+    void BindMultiSampleState(bool atoc);
+
     void BindBlendState();
 
     void BindBlendFactor();
@@ -813,6 +815,8 @@ namespace dxvk {
     Direct3DState9                  m_state;
     Com<D3D9StateBlock>             m_recorder;
     Direct3DMultithread9            m_multithread;
+
+    D3D9ExtensionState              m_hackState;
 
     Rc<D3D9ShaderModuleSet>         m_shaderModules;
 

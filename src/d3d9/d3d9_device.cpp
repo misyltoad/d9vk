@@ -1250,6 +1250,50 @@ namespace dxvk {
     if (likely(changed)) {
       states[State] = Value;
 
+      bool prevAtocEnabled =
+         m_hackState.alphaToCoverage == D3D9AlphaToCoverageState::Enabled
+      || m_hackState.alphaToCoverage == D3D9AlphaToCoverageState::ForceEnabled;
+
+      if (State == D3DRS_POINTSIZE) {
+        if (Value == hacks::PointSize::AlphaToCoverageDisabled
+         || Value == hacks::PointSize::AlphaToCoverageEnabled) {
+          m_hackState.alphaToCoverage = Value == hacks::PointSize::AlphaToCoverageEnabled
+            ? D3D9AlphaToCoverageState::ForceEnabled
+            : D3D9AlphaToCoverageState::Disabled;
+        }
+      }
+
+      if (State == D3DRS_ADAPTIVETESS_Y) {
+        if ( Value == hacks::AdaptivenessY::AlphaToCoverage
+         || (Value == 0 && m_hackState.alphaToCoverage) {
+          bool alphaTest = states[D3DRS_ALPHATESTENABLE] != 0;
+
+          D3D9AlphaToCoverageState enableState = alphaTest
+            ? D3D9AlphaToCoverageState::Enabled
+            : D3D9AlphaToCoverageState::WaitingForAlphaTest;
+
+          m_hackState.alphaToCoverage = Value == hacks::AdaptivenessY::AlphaToCoverage
+            ? enableState
+            : D3D9AlphaToCoverageState::Disabled;
+        }
+      }
+
+      if (State == D3DRS_ALPHATESTENABLE) {
+        bool alphaTest = states[D3DRS_ALPHATESTENABLE] != 0;
+
+        if      (!alphaTest && m_hackState.alphaToCoverage == D3D9AlphaToCoverageState::Enabled)
+          m_hackState.alphaToCoverage = D3D9AlphaToCoverageState::WaitingForAlphaTest;
+        else if ( alphaTest && m_hackState.alphaToCoverage == D3D9AlphaToCoverageState::WaitingForAlphaTest)
+          m_hackState.alphaToCoverage = D3D9AlphaToCoverageState::Enabled;
+      }
+
+      bool newAtocEnabled =
+         m_hackState.alphaToCoverage == D3D9AlphaToCoverageState::Enabled
+      || m_hackState.alphaToCoverage == D3D9AlphaToCoverageState::ForceEnabled;
+
+      if (prevAtocEnabled != newAtocEnabled)
+        BindMultiSampleState(newAtocEnabled);
+
       switch (State) {
         case D3DRS_SEPARATEALPHABLENDENABLE:
         case D3DRS_ALPHABLENDENABLE:
@@ -3704,6 +3748,18 @@ namespace dxvk {
         1,
         &cViewport,
         &cScissor);
+    });
+  }
+
+  void Direct3DDevice9Ex::BindMultiSampleState(bool atoc) {
+    DxvkMultisampleState msState;
+    msState.sampleMask            = 0xffffffff;
+    msState.enableAlphaToCoverage = atoc;
+
+    EmitCs([
+      cState = msState
+    ] (DxvkContext* ctx) {
+      ctx->setMultisampleState(cState);
     });
   }
 

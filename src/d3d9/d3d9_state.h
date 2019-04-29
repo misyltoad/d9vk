@@ -15,7 +15,11 @@ namespace dxvk {
 
   namespace hacks::PointSize {
     static constexpr DWORD AlphaToCoverageDisabled = MAKEFOURCC('A', '2', 'M', '0');
-    static constexpr DWORD AlphaToCoverageEnabled  = MAKEFOURCC('A', '2', 'M', '1');;
+    static constexpr DWORD AlphaToCoverageEnabled  = MAKEFOURCC('A', '2', 'M', '1');
+  }
+
+  namespace hacks::AdaptivenessY {
+    static constexpr DWORD AlphaToCoverage         = MAKEFOURCC('A', 'T', 'O', 'C');
   }
 
   class Direct3DSurface9;
@@ -80,6 +84,17 @@ namespace dxvk {
     D3D9ShaderConstants                              psConsts;
 
     std::array<UINT, caps::MaxStreams>               streamFreq;
+  };
+
+  enum class D3D9AlphaToCoverageState : uint8_t {
+    Disabled,
+    WaitingForAlphaTest,
+    Enabled,
+    ForceEnabled
+  }
+
+  struct D3D9VendorHackState {
+    D3D9AlphaToCoverageState atoc = D3D9AlphaToCoverageState::Disabled;
   };
 
   template <
