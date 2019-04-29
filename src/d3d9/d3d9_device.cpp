@@ -65,11 +65,6 @@ namespace dxvk {
     ] (DxvkContext* ctx) {
       ctx->beginRecording(cDevice->createCommandList());
 
-      DxvkMultisampleState msState;
-      msState.sampleMask            = 0xffffffff;
-      msState.enableAlphaToCoverage = VK_FALSE;
-      ctx->setMultisampleState(msState);
-
       DxvkLogicOpState loState;
       loState.enableLogicOp = VK_FALSE;
       loState.logicOp       = VK_LOGIC_OP_CLEAR;
@@ -965,7 +960,7 @@ namespace dxvk {
     if (RenderTargetIndex == 0) {
       const auto* desc = m_state.renderTargets[0]->GetCommonTexture()->Desc();
 
-      bool validSampleMask = desc.MultiSampleType > D3DMULTISAMPLE_NONMASKABLE;
+      bool validSampleMask = desc->MultiSample > D3DMULTISAMPLE_NONMASKABLE;
 
       if (validSampleMask != m_flags.test(D3D9DeviceFlag::ValidSampleMask)) {
         m_flags.clr(D3D9DeviceFlag::ValidSampleMask);
@@ -1273,7 +1268,7 @@ namespace dxvk {
 
       if (State == D3DRS_ADAPTIVETESS_Y) {
         if ( Value == hacks::AdaptivenessY::AlphaToCoverage
-         || (Value == 0 && m_hackState.atoc) {
+         ||  Value == 0) {
           bool alphaTest = states[D3DRS_ALPHATESTENABLE] != 0;
 
           D3D9AlphaToCoverageState enableState = alphaTest
@@ -1327,7 +1322,7 @@ namespace dxvk {
 
         case D3DRS_MULTISAMPLEMASK:
           if (m_flags.test(D3D9DeviceFlag::ValidSampleMask))
-            BindMultiSampleState(atoc);
+            BindMultiSampleState(newAtocEnabled);
           break;
 
         case D3DRS_ZENABLE:
@@ -2619,6 +2614,10 @@ namespace dxvk {
     rs[D3DRS_SLOPESCALEDEPTHBIAS] = bit::cast<DWORD>(0.0f);
     BindRasterizerState();
 
+    rs[D3DRS_POINTSIZE]           = bit::cast<DWORD>(1.0f));
+    rs[D3DRS_MULTISAMPLEMASK]     = 0xffffffff;
+    rs[D3DRS_ADAPTIVETESS_Y]      = bit::cast<DWORD>(0.0f));
+
     rs[D3DRS_SCISSORTESTENABLE]   = FALSE;
 
     SetRenderState(D3DRS_SHADEMODE, D3DSHADE_GOURAUD);
@@ -2658,7 +2657,6 @@ namespace dxvk {
     SetRenderState(D3DRS_EMISSIVEMATERIALSOURCE, D3DMCS_MATERIAL);
     SetRenderState(D3DRS_VERTEXBLEND, D3DVBF_DISABLE);
     SetRenderState(D3DRS_CLIPPLANEENABLE, 0);
-    SetRenderState(D3DRS_POINTSIZE, bit::cast<DWORD>(1.0f));
     SetRenderState(D3DRS_POINTSIZE_MIN, bit::cast<DWORD>(1.0f));
     SetRenderState(D3DRS_POINTSPRITEENABLE, FALSE);
     SetRenderState(D3DRS_POINTSCALEENABLE, FALSE);
@@ -2666,7 +2664,6 @@ namespace dxvk {
     SetRenderState(D3DRS_POINTSCALE_B, bit::cast<DWORD>(0.0f));
     SetRenderState(D3DRS_POINTSCALE_C, bit::cast<DWORD>(0.0f));
     SetRenderState(D3DRS_MULTISAMPLEANTIALIAS, TRUE);
-    SetRenderState(D3DRS_MULTISAMPLEMASK, 0xFFFFFFFF);
     SetRenderState(D3DRS_PATCHEDGESTYLE, D3DPATCHEDGE_DISCRETE);
     SetRenderState(D3DRS_DEBUGMONITORTOKEN, D3DDMT_ENABLE);
     SetRenderState(D3DRS_POINTSIZE_MAX, bit::cast<DWORD>(64.0f));
@@ -2678,7 +2675,6 @@ namespace dxvk {
     SetRenderState(D3DRS_MINTESSELLATIONLEVEL, bit::cast<DWORD>(1.0f));
     SetRenderState(D3DRS_MAXTESSELLATIONLEVEL, bit::cast<DWORD>(1.0f));
     SetRenderState(D3DRS_ADAPTIVETESS_X, bit::cast<DWORD>(0.0f));
-    SetRenderState(D3DRS_ADAPTIVETESS_Y, bit::cast<DWORD>(0.0f));
     SetRenderState(D3DRS_ADAPTIVETESS_Z, bit::cast<DWORD>(1.0f));
     SetRenderState(D3DRS_ADAPTIVETESS_W, bit::cast<DWORD>(0.0f));
     SetRenderState(D3DRS_ENABLEADAPTIVETESSELLATION, FALSE);
@@ -3790,7 +3786,7 @@ namespace dxvk {
     baseMode.colorDstFactor = DecodeBlendFactor(D3DBLEND  ( state[D3DRS_DESTBLEND] ), false);
     baseMode.colorBlendOp   = DecodeBlendOp    (D3DBLENDOP( state[D3DRS_BLENDOP] ));
 
-    baseMode.alphaSrcFactor = DecodeBlendFactor(separateAlpha ? D3DBLEND  ( state[D3DRS_SRCBLENDALPHA] )  : D3DBLEND  ( state[D3DRS_SRCBLEND],    true);
+    baseMode.alphaSrcFactor = DecodeBlendFactor(separateAlpha ? D3DBLEND  ( state[D3DRS_SRCBLENDALPHA] )  : D3DBLEND  ( state[D3DRS_SRCBLEND] ),  true);
     baseMode.alphaDstFactor = DecodeBlendFactor(separateAlpha ? D3DBLEND  ( state[D3DRS_DESTBLENDALPHA] ) : D3DBLEND  ( state[D3DRS_DESTBLEND] ), true);
     baseMode.alphaBlendOp   = DecodeBlendOp    (separateAlpha ? D3DBLENDOP( state[D3DRS_BLENDOPALPHA] )   : D3DBLENDOP( state[D3DRS_BLENDOP] ));
 
