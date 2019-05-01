@@ -61,6 +61,10 @@ namespace dxvk {
         delete this;
       }
     }
+
+    ULONG GetPrivateRefCount() {
+      return m_refPrivate.load();
+    }
     
   private:
     
