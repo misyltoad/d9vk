@@ -1098,6 +1098,14 @@ namespace dxvk {
             uint32_t                reference,
       const SpirvImageOperands&     operands);
 
+    uint32_t sampleGeneric(
+            bool                    projected,
+            uint32_t                resultType,
+            uint32_t                sampledImage,
+            uint32_t                coordinates,
+            uint32_t                reference,
+      const SpirvImageOperands&     operands);
+
     uint32_t opGroupNonUniformBallot(
             uint32_t                resultType,
             uint32_t                execution,

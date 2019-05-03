@@ -3201,6 +3201,68 @@ namespace dxvk {
     return resultId;
   }
 
+
+  uint32_t SpirvModule::sampleGeneric(
+          bool                    projected,
+          uint32_t                resultType,
+          uint32_t                sampledImage,
+          uint32_t                coordinates,
+          uint32_t                reference,
+    const SpirvImageOperands&     operands) {
+    uint32_t resultId = this->allocateId();
+
+    const bool depthCompare = reference != 0;
+    const bool explicitLod  =
+       (operands.flags & spv::ImageOperandsLodMask)
+    || (operands.flags & spv::ImageOperandsGradMask);
+
+    uint32_t argCount = 5;
+    if (depthCompare)
+      argCount = 6;
+
+    spv::Op opcode;
+    if (projected) {
+      if (depthCompare) {
+        if (explicitLod)
+          opcode = spv::OpImageSampleProjDrefExplicitLod;
+        else
+          opcode = spv::OpImageSampleProjDrefImplicitLod;
+      }
+      else {
+        if (explicitLod)
+          opcode = spv::OpImageSampleProjExplicitLod;
+        else
+          opcode = spv::OpImageSampleProjImplicitLod;
+      }
+    }
+    else {
+      if (depthCompare) {
+        if (explicitLod)
+          opcode = spv::OpImageSampleDrefExplicitLod;
+        else
+          opcode = spv::OpImageSampleDrefImplicitLod;
+      }
+      else {
+        if (explicitLod)
+          opcode = spv::OpImageSampleExplicitLod;
+        else
+          opcode = spv::OpImageSampleImplicitLod;
+      }
+    }
+    
+    m_code.putIns(opcode,
+      argCount + getImageOperandWordCount(operands));
+    m_code.putWord(resultType);
+    m_code.putWord(resultId);
+    m_code.putWord(sampledImage);
+    m_code.putWord(coordinates);
+    if (depthCompare)
+      m_code.putWord(reference);
+    
+    putImageOperands(operands);
+    return resultId;
+  }
+
   
   uint32_t SpirvModule::opGroupNonUniformBallot(
           uint32_t                resultType,
