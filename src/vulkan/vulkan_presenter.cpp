@@ -337,6 +337,12 @@ namespace dxvk::vk {
   VkExtent2D Presenter::pickImageExtent(
     const VkSurfaceCapabilitiesKHR& caps,
           VkExtent2D                desired) {
+    // The window is in a weird state.
+    // Let's try this anyway...
+    if (caps.currentExtent.width == 0)
+      return desired;
+
+
     if (caps.currentExtent.width != std::numeric_limits<uint32_t>::max())
       return caps.currentExtent;
     
