@@ -684,9 +684,9 @@ namespace dxvk {
 
     void CreateConstantBuffers();
 
-    void SynchronizeCsThread();
+    void SynchronizeCsThread(const char* whomst);
 
-    void Flush();
+    void Flush(const char* whomst);
 
     void BindFramebuffer();
 
@@ -763,7 +763,7 @@ namespace dxvk {
     void SetVertexBoolBitfield(uint32_t mask, uint32_t bits);
     void SetPixelBoolBitfield(uint32_t mask, uint32_t bits);
 
-    void FlushImplicit(BOOL StrongHint);
+    void FlushImplicit(BOOL StrongHint, const char* whomst);
 
   private:
 

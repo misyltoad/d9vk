@@ -50,8 +50,8 @@ namespace dxvk {
 
     auto& presenter = GetOrMakePresenter(window);
 
-    m_parent->Flush();
-    m_parent->SynchronizeCsThread();
+    m_parent->Flush("D3D9SwapChainEx::Present");
+    m_parent->SynchronizeCsThread("D3D9SwapChainEx::Present");
 
     presenter.present();
 

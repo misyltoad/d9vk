@@ -118,7 +118,7 @@ namespace dxvk {
     if (m_state == D3D9_VK_QUERY_INITIAL)
       this->Issue(D3DISSUE_END);
 
-    m_parent->SynchronizeCsThread();
+    m_parent->SynchronizeCsThread("D3D9Query::GetData");
     
     bool flush = dwGetDataFlags & D3DGETDATA_FLUSH;
 
@@ -134,7 +134,7 @@ namespace dxvk {
         * static_cast<BOOL*>(pData) = signaled;
 
       if (!signaled && flush)
-        m_parent->FlushImplicit(FALSE);
+        m_parent->FlushImplicit(FALSE, "D3D9Query::GetData (event)");
 
       return signaled ? D3D_OK : S_FALSE;
     }
@@ -150,7 +150,7 @@ namespace dxvk {
 
         if (status == DxvkGpuQueryStatus::Pending) {
           if (flush)
-            m_parent->FlushImplicit(FALSE);
+            m_parent->FlushImplicit(FALSE, "D3D9Query::GetData (query)");
           return S_FALSE;
         }
       }

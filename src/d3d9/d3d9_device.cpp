@@ -88,8 +88,8 @@ namespace dxvk {
   }
 
   D3D9DeviceEx::~D3D9DeviceEx() {
-    Flush();
-    SynchronizeCsThread();
+    Flush("~D3D9DeviceEx");
+    SynchronizeCsThread("~D3D9DeviceEx");
 
     delete m_initializer;
 
@@ -572,7 +572,7 @@ namespace dxvk {
     const POINT*             pDestPoint) {
     auto lock = LockDevice();
 
-    FlushImplicit(FALSE);
+    FlushImplicit(FALSE, "D3D9DeviceEx::UpdateSurface");
 
     D3D9Surface* src = static_cast<D3D9Surface*>(pSourceSurface);
     D3D9Surface* dst = static_cast<D3D9Surface*>(pDestinationSurface);
@@ -680,7 +680,7 @@ namespace dxvk {
           IDirect3DBaseTexture9* pDestinationTexture) {
     auto lock = LockDevice();
 
-    FlushImplicit(FALSE);
+    FlushImplicit(FALSE, "D3D9DeviceEx::UpdateTexture");
 
     if (!pDestinationTexture || !pSourceTexture)
       return D3DERR_INVALIDCALL;
@@ -949,7 +949,7 @@ namespace dxvk {
     if (m_state.renderTargets[RenderTargetIndex] == rt)
       return D3D_OK;
 
-    FlushImplicit(FALSE);
+    FlushImplicit(FALSE, "D3D9DeviceEx::SetRenderTarget");
 
     changePrivate(m_state.renderTargets[RenderTargetIndex], rt);
     
@@ -1016,7 +1016,7 @@ namespace dxvk {
     if (m_state.depthStencil == ds)
       return D3D_OK;
 
-    FlushImplicit(FALSE);
+    FlushImplicit(FALSE, "D3D9DeviceEx::SetDepthStencilSurface");
 
     changePrivate(m_state.depthStencil, ds);
 
@@ -1049,7 +1049,7 @@ namespace dxvk {
   }
 
   HRESULT STDMETHODCALLTYPE D3D9DeviceEx::EndScene() {
-    FlushImplicit(true);
+    FlushImplicit(true, "D3D9DeviceEx::EndScene");
 
     return D3D_OK;
   }
@@ -2704,8 +2704,8 @@ namespace dxvk {
       SetClipPlane(i, plane);
     }
 
-    Flush();
-    SynchronizeCsThread();
+    Flush("D3D9DeviceEx::ResetEx");
+    SynchronizeCsThread("D3D9DeviceEx::ResetEx");
 
     HRESULT hr;
     auto* implicitSwapchain = GetInternalSwapchain(0);
@@ -2956,21 +2956,21 @@ namespace dxvk {
     // on the CS thread so that we can determine whether the
     // resource is currently in use or not.
 
-    SynchronizeCsThread();
+    SynchronizeCsThread("D3D9DeviceEx::WaitForResource");
 
     if (Resource->isInUse()) {
       if (MapFlags & D3DLOCK_DONOTWAIT) {
         // We don't have to wait, but misbehaving games may
         // still try to spin on `Map` until the resource is
         // idle, so we should flush pending commands
-        FlushImplicit(FALSE);
+        FlushImplicit(FALSE, "D3D9DeviceEx::WaitForResource");
         return false;
       }
       else {
         // Make sure pending commands using the resource get
         // executed on the the GPU if we have to wait for it
-        Flush();
-        SynchronizeCsThread();
+        Flush("D3D9DeviceEx::WaitForResource");
+        SynchronizeCsThread("D3D9DeviceEx::WaitForResource");
 
         while (Resource->isInUse())
           dxvk::this_thread::yield();
@@ -3374,7 +3374,7 @@ namespace dxvk {
     if (pResource->SetMapFlags(0) & D3DLOCK_READONLY)
       return D3D_OK;
 
-    FlushImplicit(FALSE);
+    FlushImplicit(FALSE, "D3D9DeviceEx::UnlockBuffer");
 
     auto dstBuffer = pResource->GetBufferSlice(D3D9_COMMON_BUFFER_TYPE_REAL);
     auto srcBuffer = pResource->GetBufferSlice(D3D9_COMMON_BUFFER_TYPE_STAGING);
@@ -3400,7 +3400,7 @@ namespace dxvk {
   }
 
 
-  void D3D9DeviceEx::FlushImplicit(BOOL StrongHint) {
+  void D3D9DeviceEx::FlushImplicit(BOOL StrongHint, const char* whomst) {
     // Flush only if the GPU is about to go idle, in
     // order to keep the number of submissions low.
     if (StrongHint || m_dxvkDevice->pendingSubmissions() <= MaxPendingSubmits) {
@@ -3408,12 +3408,14 @@ namespace dxvk {
 
       // Prevent flushing too often in short intervals.
       if (now - m_lastFlush >= std::chrono::microseconds(MinFlushIntervalUs))
-        Flush();
+        Flush(whomst);
     }
   }
 
-  void D3D9DeviceEx::SynchronizeCsThread() {
+  void D3D9DeviceEx::SynchronizeCsThread(const char* whomst) {
     auto lock = LockDevice();
+
+    Logger::info(str::format("D3D9DeviceEx::SynchronizeCsThread: caused by ", whomst));
 
     // Dispatch current chunk so that all commands
     // recorded prior to this function will be run
@@ -3578,8 +3580,10 @@ namespace dxvk {
     });
   }
 
-  void D3D9DeviceEx::Flush() {
+  void D3D9DeviceEx::Flush(const char* whomst) {
     auto lock = LockDevice();
+
+    Logger::info(str::format("D3D9DeviceEx::Flush: caused by ", whomst));
 
     m_initializer->Flush();
 
@@ -4220,7 +4224,7 @@ namespace dxvk {
     });
 
     if (queryPtr->GetType() == D3DQUERYTYPE_EVENT)
-      FlushImplicit(TRUE);
+      FlushImplicit(TRUE, "D3D9DeviceEx::End (event)");
   }
 
   void D3D9DeviceEx::SetVertexBoolBitfield(uint32_t mask, uint32_t bits) {
