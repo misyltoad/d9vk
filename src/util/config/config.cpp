@@ -148,6 +148,15 @@ namespace dxvk {
     { R"(\\mgsvtpp\.exe$)", {{
       { "dxvk.enableOpenVR",                "False" },
     }} },
+
+    /**********************************************/
+    /* D3D9 GAMES                                 */
+    /**********************************************/
+
+    /* A Hat in Time                              */
+    { "HatinTimeGame.exe", {{
+      { "d3d9.strictPow",                   "False" },
+    }} },
   }};
 
 
