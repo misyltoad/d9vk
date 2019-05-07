@@ -150,6 +150,15 @@ namespace dxvk {
     { "NieRAutomata.exe", {{
       { "d3d11.constantBufferRangeCheck",   "True" },
     }} },
+
+    /**********************************************/
+    /* D3D9 GAMES                                 */
+    /**********************************************/
+
+    /* A Hat in Time                              */
+    { "HatinTimeGame.exe", {{
+      { "d3d9.strictPow",                   "False" },
+    }} },
   }};
 
 
