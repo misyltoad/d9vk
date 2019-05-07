@@ -158,6 +158,15 @@ namespace dxvk {
     { "vr.exe", {{
       { "d3d11.dcSingleUseMode",            "False" },
     }} },
+
+    /**********************************************/
+    /* D3D9 GAMES                                 */
+    /**********************************************/
+
+    /* A Hat in Time                              */
+    { "HatinTimeGame.exe", {{
+      { "d3d9.strictPow",                   "False" },
+    }} },
   }};
 
 
