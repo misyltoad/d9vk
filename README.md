@@ -1,12 +1,9 @@
-# DXVK
+# D9VK
 
-A Vulkan-based translation layer for Direct3D 10/11 which allows running 3D applications on Linux using Wine.
-
-For the current status of the project, please refer to the [project wiki](https://github.com/doitsujin/dxvk/wiki).
-
+A Vulkan-based translation layer for Direct3D 9 (based on [DXVK](https://github.com/doitsujin/dxvk)) which allows running d3d9 applications on Linux using Wine.
 
 ## How to use
-In order to install a DXVK package obtained from the [release](https://github.com/doitsujin/dxvk/releases) page into a given wine prefix, run the following commands from within the DXVK directory:
+In order to install a D9VK package obtained from the [release](https://github.com/Joshua-Ashton/d9vk) page (or [build page](https://git.froggi.es/joshua/d9vk/-/jobs) which will give you the latest version from `master`) into a given wine prefix, run the following commands from within the D9VK directory:
 
 ```
 export WINEPREFIX=/path/to/.wine-prefix
@@ -19,13 +16,15 @@ The setup script optionally takes the following arguments:
 - `--symlink`: Create symbolic links to the DLL files instead of copying them. This is especially useful for development.
 - `--without-dxgi`: Do not install DXVK's DXGI implementation and use the one provided by wine instead. This is necessary for both vkd3d and DXVK to work within the same wine prefix.
 
-Verify that your application uses DXVK instead of wined3d by checking for the presence of the log file `d3d11.log` in the application's directory, or by enabling the HUD (see notes below).
+Verify that your application uses D9VK instead of wined3d by checking for the presence of the log file `d3d9.log` in the application's directory, or by enabling the HUD (see notes below).
 
-In order to remove DXVK from a prefix, run the following command:
+In order to remove D9VK from a prefix, run the following command:
 ```
 export WINEPREFIX=/path/to/.wine-prefix
 ./setup_dxvk.sh uninstall
 ```
+
+*Do note, that installing D9VK will also install the version of DXVK it was built against.*
 
 ## Build instructions
 
@@ -38,12 +37,12 @@ export WINEPREFIX=/path/to/.wine-prefix
 ### Building DLLs
 
 #### The simple way
-Inside the DXVK directory, run:
+Inside the D9VK directory, run:
 ```
 ./package-release.sh master /your/target/directory --no-package
 ```
 
-This will create a folder `dxvk-master` in `/your/target/directory`, which contains both 32-bit and 64-bit versions of DXVK, which can be set up in the same way as the release versions as noted above.
+This will create a folder `dxvk-master` in `/your/target/directory`, which contains both 32-bit and 64-bit versions of D9VK and DXVK, which can be set up in the same way as the release versions as noted above.
 
 In order to preserve the build directories for development, pass `--dev-build` to the script. This option implies `--no-package`. After making changes to the source code, you can then do the following to rebuild DXVK:
 ```
@@ -58,15 +57,15 @@ A winelib build can be created by adding the `--winelib` argument.
 ```
 # 64-bit build. For 32-bit builds, replace
 # build-win64.txt with build-win32.txt
-meson --cross-file build-win64.txt --buildtype release --prefix /your/dxvk/directory build.w64
+meson --cross-file build-win64.txt --buildtype release --prefix /your/d9vk/directory build.w64
 cd build.w64
 ninja install
 ```
 
-The D3D10, D3D11 and DXGI DLLs will be located in `/your/dxvk/directory/bin`. Setup has to be done manually in this case.
+The D3D9, D3D10, D3D11 and DXGI DLLs will be located in `/your/d9vk/directory/bin`. Setup has to be done manually in this case.
 
 ### Notes on Vulkan drivers
-Before reporting an issue, please check the [Wiki](https://github.com/doitsujin/dxvk/wiki/Driver-support) page on the current driver status and make sure you run a recent enough driver version for your hardware.
+Before reporting an issue, please check the [DXVK Wiki](https://github.com/doitsujin/dxvk/wiki/Driver-support) page on the current driver status and make sure you run a recent enough driver version for your hardware.
 
 ### Online multi-player games
 Manipulation of Direct3D libraries in multi-player games may be considered cheating and can get your account **banned**. This may also apply to single-player games with an embedded or dedicated multiplayer portion. **Use at your own risk.**
@@ -82,6 +81,7 @@ The `DXVK_HUD` environment variable controls a HUD which can display the framera
 - `memory`: Shows the amount of device memory allocated and used.
 - `version`: Shows DXVK version.
 - `api`: Shows the D3D feature level used by the application. Does not work correctly for D3D10 at the moment.
+- `samplers`: Shows the current sampler count.
 
 Additionally, `DXVK_HUD=1` has the same effect as `DXVK_HUD=devinfo,fps`, and `DXVK_HUD=full` enables all available HUD elements.
 
@@ -92,7 +92,7 @@ Some applications do not provide a method to select a different GPU. In that cas
 **Note:** If the device filter is configured incorrectly, it may filter out all devices and applications will be unable to create a D3D device.
 
 ### State cache
-DXVK caches pipeline state by default, so that shaders can be recompiled ahead of time on subsequent runs of an application, even if the driver's own shader cache got invalidated in the meantime. This cache is enabled by default, and generally reduces stuttering.
+D9VK caches pipeline state by default, so that shaders can be recompiled ahead of time on subsequent runs of an application, even if the driver's own shader cache got invalidated in the meantime. This cache is enabled by default, and generally reduces stuttering.
 
 The following environment variables can be used to control the cache:
 - `DXVK_STATE_CACHE=0` Disables the state cache.
@@ -106,7 +106,7 @@ The following environment variables can be used for **debugging** purposes.
 - `DXVK_CONFIG_FILE=/xxx/dxvk.conf` Sets path to the configuration file.
 
 ## Troubleshooting
-DXVK requires threading support from your mingw-w64 build environment. If you
+D9VK requires threading support from your mingw-w64 build environment. If you
 are missing this, you may see "error: 'mutex' is not a member of 'std'". On
 Debian and Ubuntu, this can usually be resolved by using the posix alternate, which
 supports threading. For example, choose the posix alternate from these
