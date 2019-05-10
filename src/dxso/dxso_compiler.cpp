@@ -2356,6 +2356,19 @@ void DxsoCompiler::emitControlFlowGenericLoop(
 
 
   void DxsoCompiler::emitInputSetup() {
+    uint32_t pointSpriteSpec = m_module.specConstBool(false);
+    m_module.decorateSpecId(pointSpriteSpec, getSpecId(D3D9SpecConstantId::PointSampleEnable));
+    m_module.setDebugName(pointSpriteSpec, "ps_pointsprite");
+
+    DxsoRegisterInfo pointCoord;
+    pointCoord.type.ctype   = DxsoScalarType::Float32;
+    pointCoord.type.ccount  = 2;
+    pointCoord.type.alength = 1;
+    pointCoord.sclass       = spv::StorageClassInput;
+
+    uint32_t pointCoordPtr  = emitNewBuiltinVariable(pointCoord, spv::BuiltInPointCoord, "ps_pointcoord", 0);
+    uint32_t pointCoordVar  = m_module.opLoad(getArrayTypeId(pointCoord.type), pointCoordPtr);
+
     for (uint32_t i = 0; i < m_isgn.elemCount; i++) {
       const auto& elem = m_isgn.elems[i];
       const uint32_t slot = elem.slot;
@@ -2412,10 +2425,42 @@ void DxsoCompiler::emitControlFlowGenericLoop(
         }
       }
 
-      workingReg.id = m_module.opVectorShuffle(getVectorTypeId(workingReg.type),
-        workingReg.id, indexVal.id, 4, indices.data());
+      if (elem.semantic.usage == DxsoUsage::Texcoord) {
+        uint32_t coordLabel    = m_module.allocateId();
+        uint32_t regularLabel  = m_module.allocateId();
+        uint32_t endLabel      = m_module.allocateId();
 
-      m_module.opStore(indexPtr.id, workingReg.id);
+        m_module.opSelectionMerge(endLabel, spv::SelectionControlMaskNone);
+        m_module.opBranchConditional(pointSpriteSpec, coordLabel, regularLabel);
+
+        m_module.opLabel(coordLabel);
+        std::array<uint32_t, 4> pointIndices = indices;
+        for (uint32_t i = 0; i < 4; i++) {
+          if (pointIndices[i] > 5)
+            pointIndices[i] = 0;
+        }
+
+        uint32_t outReg = m_module.opVectorShuffle(getVectorTypeId(workingReg.type),
+          workingReg.id, pointCoordVar, 4, pointIndices.data());
+
+        m_module.opStore(indexPtr.id, outReg);
+        m_module.opBranch(endLabel);
+
+        m_module.opLabel(regularLabel);
+        outReg = m_module.opVectorShuffle(getVectorTypeId(workingReg.type),
+          workingReg.id, indexVal.id, 4, indices.data());
+
+        m_module.opStore(indexPtr.id, outReg);
+        m_module.opBranch(endLabel);
+
+        m_module.opLabel(endLabel);
+      }
+      else {
+        workingReg.id = m_module.opVectorShuffle(getVectorTypeId(workingReg.type),
+          workingReg.id, indexVal.id, 4, indices.data());
+
+        m_module.opStore(indexPtr.id, workingReg.id);
+      }
     }
   }
 
