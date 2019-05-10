@@ -5,8 +5,9 @@
 namespace dxvk {
 
   enum D3D9SpecConstantId : uint32_t {
-    AlphaTestEnable = 0,
-    AlphaCompareOp  = 1,
+    AlphaTestEnable   = 0,
+    AlphaCompareOp    = 1,
+    PointSampleEnable = 2
   };
 
 }

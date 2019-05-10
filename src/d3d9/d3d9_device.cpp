@@ -1328,6 +1328,10 @@ namespace dxvk {
           m_flags.set(D3D9DeviceFlag::DirtyRenderStateBuffer);
           break;
 
+        case D3DRS_POINTSPRITEENABLE:
+          m_flags.set(D3D9DeviceFlag::DirtyPointSpriteState);
+          break;
+
         default:
           static bool s_errorShown[256];
 
@@ -3873,6 +3877,20 @@ namespace dxvk {
     });
   }
 
+  void D3D9DeviceEx::BindPointSpriteState() {
+    m_flags.clr(D3D9DeviceFlag::DirtyPointSpriteState);
+
+    auto& rs = m_state.renderStates;
+
+    // TODO: POINTSCALEENABLE for fixed function point scaling
+    // It's stupid. https://docs.microsoft.com/en-us/windows/desktop/direct3d9/point-sprites
+    const bool enabled = rs[D3DRS_POINTSPRITEENABLE] != 0;
+
+    EmitCs([cEnabled = enabled] (DxvkContext* ctx) {
+      ctx->setSpecConstant(D3D9SpecConstantId::PointSampleEnable, cEnabled);
+    });
+  }
+
   void D3D9DeviceEx::BindAlphaTestState() {
     m_flags.clr(D3D9DeviceFlag::DirtyAlphaTestState);
     
@@ -4055,6 +4073,9 @@ namespace dxvk {
 
     if (m_flags.test(D3D9DeviceFlag::DirtyRasterizerState))
       BindRasterizerState();
+
+    if (m_flags.test(D3D9DeviceFlag::DirtyPointSpriteState))
+      BindPointSpriteState();
     
     if (m_flags.test(D3D9DeviceFlag::DirtyAlphaTestState))
       BindAlphaTestState();

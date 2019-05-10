@@ -44,6 +44,7 @@ namespace dxvk {
     DirtyBlendState,
     DirtyRasterizerState,
     DirtyAlphaTestState,
+    DirtyPointSpriteState,
     DirtyRenderStateBuffer,
     DirtyInputLayout,
     DirtyViewportScissor,
@@ -705,6 +706,8 @@ namespace dxvk {
     void BindDepthStencilRefrence();
 
     void BindRasterizerState();
+
+    void BindPointSpriteState();
 
     void BindAlphaTestState();
     
