@@ -159,6 +159,7 @@ namespace dxvk {
     /* A Hat in Time                              */
     { "HatinTimeGame.exe", {{
       { "d3d9.strictPow",                   "False" },
+      { "d3d9.lenientClear",                "True" },
     }} },
   }};
 
