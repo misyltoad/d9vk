@@ -28,6 +28,8 @@ export WINEPREFIX=/path/to/.wine-prefix
 
 ## Build instructions
 
+### If you build it yourself with MinGW, please use the [dwarf2 exception patch](https://github.com/Tk-Glitch/PKGBUILDS/tree/master/mingw) otherwise you will face poor performance on x86 games/apps.
+
 ### Requirements:
 - [wine 3.10](https://www.winehq.org/) or newer
 - [Meson](http://mesonbuild.com/) build system (at least version 0.43)
