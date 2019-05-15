@@ -1,7 +1,7 @@
 #include "d3d9_presenter.h"
 
-#include "dxgi_presenter_frag.h"
-#include "dxgi_presenter_vert.h"
+#include "d3d9_presenter_frag.h"
+#include "d3d9_presenter_vert.h"
 
 namespace dxvk {
 
@@ -273,8 +273,8 @@ namespace dxvk {
 
 
   void D3D9Presenter::initShaders() {
-    const SpirvCodeBuffer vsCode(dxgi_presenter_vert);
-    const SpirvCodeBuffer fsCode(dxgi_presenter_frag);
+    const SpirvCodeBuffer vsCode(d3d9_presenter_vert);
+    const SpirvCodeBuffer fsCode(d3d9_presenter_frag);
 
     const std::array<DxvkResourceSlot, 2> fsResourceSlots = { {
       { BindingIds::Image,  VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,  VK_IMAGE_VIEW_TYPE_2D },
