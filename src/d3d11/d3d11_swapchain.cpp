@@ -594,6 +594,7 @@ namespace dxvk {
     
     m_msState.sampleMask            = 0xffffffff;
     m_msState.enableAlphaToCoverage = VK_FALSE;
+    m_msState.enableMultisampling   = VK_TRUE;
     
     VkStencilOpState stencilOp;
     stencilOp.failOp      = VK_STENCIL_OP_KEEP;
