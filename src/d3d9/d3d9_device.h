@@ -704,6 +704,8 @@ namespace dxvk {
 
     void BindViewportAndScissor();
 
+    void UpdateSampleMaskValidity();
+
     inline bool IsAlphaToCoverageEnabled() {
       const bool alphaTest = m_state.renderStates[D3DRS_ALPHATESTENABLE] != 0;
 

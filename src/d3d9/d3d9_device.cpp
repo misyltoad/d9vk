@@ -975,15 +975,7 @@ namespace dxvk {
     if (RenderTargetIndex == 0) {
       const auto* desc = m_state.renderTargets[0]->GetCommonTexture()->Desc();
 
-      bool validSampleMask = desc->MultiSample > D3DMULTISAMPLE_NONMASKABLE;
-
-      if (validSampleMask != m_flags.test(D3D9DeviceFlag::ValidSampleMask)) {
-        m_flags.clr(D3D9DeviceFlag::ValidSampleMask);
-        if (validSampleMask)
-          m_flags.set(D3D9DeviceFlag::ValidSampleMask);
-
-        m_flags.set(D3D9DeviceFlag::DirtyMultiSampleState);
-      }
+      UpdateSampleMaskValidity();
 
       D3DVIEWPORT9 viewport;
       viewport.X       = 0;
@@ -1474,6 +1466,10 @@ namespace dxvk {
 
         case D3DRS_ALPHAREF:
           m_flags.set(D3D9DeviceFlag::DirtyRenderStateBuffer);
+          break;
+
+        case D3DRS_MULTISAMPLEANTIALIAS:
+          UpdateSampleMaskValidity();
           break;
 
         default:
@@ -3908,10 +3904,28 @@ namespace dxvk {
     });
   }
 
+  void D3D9DeviceEx::UpdateSampleMaskValidity() {
+    const auto* desc           = m_state.renderTargets[0]->GetCommonTexture()->Desc();
+
+    const bool antialiasing    = m_state.renderStates[D3DRS_MULTISAMPLEANTIALIAS] != 0;
+    const bool maskable        = desc->MultiSample > D3DMULTISAMPLE_NONMASKABLE;
+
+    const bool validSampleMask = maskable && antialiasing;
+
+    if (validSampleMask != m_flags.test(D3D9DeviceFlag::ValidSampleMask)) {
+      m_flags.clr(D3D9DeviceFlag::ValidSampleMask);
+      if (validSampleMask)
+        m_flags.set(D3D9DeviceFlag::ValidSampleMask);
+
+      m_flags.set(D3D9DeviceFlag::DirtyMultiSampleState);
+    }
+  }
+
   void D3D9DeviceEx::BindMultiSampleState() {
     m_flags.clr(D3D9DeviceFlag::DirtyMultiSampleState);
 
     DxvkMultisampleState msState;
+    msState.enableMultisampling   = m_state.renderStates[D3DRS_MULTISAMPLEANTIALIAS] != 0;
     msState.sampleMask            = m_flags.test(D3D9DeviceFlag::ValidSampleMask)
       ? m_state.renderStates[D3DRS_MULTISAMPLEMASK]
       : 0xffffffff;
