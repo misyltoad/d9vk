@@ -182,10 +182,12 @@ namespace dxvk {
     // Figure out the actual sample count to use
     VkSampleCountFlagBits sampleCount = VK_SAMPLE_COUNT_1_BIT;
 
-    if (state.msSampleCount)
-      sampleCount = VkSampleCountFlagBits(state.msSampleCount);
-    else if (state.rsSampleCount)
-      sampleCount = VkSampleCountFlagBits(state.rsSampleCount);
+    if (state.msEnableMultisampling) {
+      if (state.msSampleCount)
+        sampleCount = VkSampleCountFlagBits(state.msSampleCount);
+      else if (state.rsSampleCount)
+        sampleCount = VkSampleCountFlagBits(state.rsSampleCount);
+    }
     
     // Set up some specialization constants
     DxvkSpecConstants specData;

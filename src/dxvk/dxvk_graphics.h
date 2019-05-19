@@ -96,6 +96,7 @@ namespace dxvk {
     VkSampleCountFlags                  msSampleCount;
     uint32_t                            msSampleMask;
     VkBool32                            msEnableAlphaToCoverage;
+    VkBool32                            msEnableMultisampling;
     
     VkBool32                            dsEnableDepthTest;
     VkBool32                            dsEnableDepthWrite;
