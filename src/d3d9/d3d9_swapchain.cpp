@@ -142,10 +142,8 @@ namespace dxvk {
     if (ppBackBuffer == nullptr)
       return D3DERR_INVALIDCALL;
 
-    if (iBackBuffer > 0) {
-      Logger::err("D3D9: GetBackBuffer: iBackBuffer > 0 not supported");
-      return D3DERR_INVALIDCALL;
-    }
+    if (iBackBuffer > 0)
+      Logger::warn("D3D9: GetBackBuffer: iBackBuffer > 0 queried. Returning index 0.");
 
     *ppBackBuffer = ref(m_backBuffer);
 
