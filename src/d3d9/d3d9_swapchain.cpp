@@ -259,9 +259,14 @@ namespace dxvk {
       // Adjust window position and size
       RECT newRect = { 0, 0, 0, 0 };
       RECT oldRect = { 0, 0, 0, 0 };
+
+      RECT monitorRect;
+      GetMonitorRect(GetDefaultMonitor(), &monitorRect);
       
       ::GetWindowRect(m_window, &oldRect);
-      ::SetRect(&newRect, 0, 0, pPresentParams->BackBufferWidth, pPresentParams->BackBufferHeight);
+      ::SetRect(&newRect, 0, 0,
+        std::min<int>(pPresentParams->BackBufferWidth,  monitorRect.right  - monitorRect.left),
+        std::min<int>(pPresentParams->BackBufferHeight, monitorRect.bottom - monitorRect.top));
       ::AdjustWindowRectEx(&newRect,
         ::GetWindowLongW(m_window, GWL_STYLE), FALSE,
         ::GetWindowLongW(m_window, GWL_EXSTYLE));
