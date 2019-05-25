@@ -3222,6 +3222,9 @@ namespace dxvk {
             DWORD                   Flags) {
     auto lock = LockDevice();
 
+    if (!m_d3d9Options.allowLockFlagReadonly)
+      Flags &= ~D3DLOCK_READONLY;
+
     UINT Subresource = pResource->CalcSubresource(Face, MipLevel);
     auto& desc = *(pResource->Desc());
 
@@ -3492,6 +3495,9 @@ namespace dxvk {
 
     if (unlikely(ppbData == nullptr))
       return D3DERR_INVALIDCALL;
+
+    if (!m_d3d9Options.allowLockFlagReadonly)
+      Flags &= ~D3DLOCK_READONLY;
 
     pResource->SetMapFlags(Flags);
 
