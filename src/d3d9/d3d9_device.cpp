@@ -4389,6 +4389,42 @@ namespace dxvk {
 
 
   void D3D9DeviceEx::PrepareDraw(bool up) {
+    auto* rt = GetCommonTexture(m_state.renderTargets[0]);
+    auto* ds = GetCommonTexture(m_state.depthStencil);
+
+    static const std::array<D3DRENDERSTATETYPE, 4> cws = {
+      D3DRS_COLORWRITEENABLE,
+      D3DRS_COLORWRITEENABLE1,
+      D3DRS_COLORWRITEENABLE2,
+      D3DRS_COLORWRITEENABLE3
+    };
+
+    auto& rs = m_state.renderStates;
+
+    bool zWrite = rs[D3DRS_ZWRITEENABLE] != 0;
+
+    for (uint32_t j = 0; j < m_state.textures.size(); j++) { 
+      auto* tex = GetCommonTexture(m_state.textures[j]);
+
+      const char* thing = nullptr;
+
+      if (rt == tex)
+        thing = "render target";
+
+      if (ds == tex)
+        thing = "depth stencil";
+
+      if (thing != nullptr) {
+        Logger::warn(str::format(
+          "", thing, " clash ",
+          " | z-write: ", zWrite              ? "true" : "false",
+          " | cw0:     ", rs[cws[0]] != FALSE ? "true" : "false",
+          " | cw1:     ",  rs[cws[1]] != FALSE ? "true" : "false",
+          " | cw2:     ", rs[cws[2]] != FALSE ? "true" : "false",
+          " | cw3:     ", rs[cws[3]] != FALSE ? "true" : "false"));
+      }
+    }
+
     if (m_flags.test(D3D9DeviceFlag::DirtyFramebuffer))
       BindFramebuffer();
 
