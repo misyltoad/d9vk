@@ -29,6 +29,7 @@ namespace dxvk {
 
     this->runCompiler(compiler, m_code.iter());
     m_isgn = compiler.isgn();
+    m_usedSamplers = compiler.usedSamplers();
 
     m_meta      = compiler.meta();
     m_constants = compiler.constants();

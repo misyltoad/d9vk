@@ -8,6 +8,7 @@
 #include "dxso_isgn.h"
 #include "dxso_analysis.h"
 
+#include <bitset>
 #include <vector>
 
 namespace dxvk {
@@ -52,6 +53,8 @@ namespace dxvk {
 
     const DxsoDefinedConstants& constants() { return m_constants; }
 
+    std::bitset<17> usedSamplers() const { return m_usedSamplers; }
+
   private:
 
     void runCompiler(
@@ -69,6 +72,8 @@ namespace dxvk {
 
     DxsoShaderMetaInfo   m_meta;
     DxsoDefinedConstants m_constants;
+
+    std::bitset<17>      m_usedSamplers;
 
   };
 

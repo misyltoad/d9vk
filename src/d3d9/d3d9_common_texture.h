@@ -50,6 +50,7 @@ namespace dxvk {
 
   struct D3D9ViewSet {
     D3D9ColorView                    Sample;
+    D3D9ColorView                    Hazard;
     Rc<DxvkImageView>                MipGenRT;
 
     std::array<D3D9ColorView, 6>     FaceSample;
@@ -148,6 +149,8 @@ namespace dxvk {
 
       return m_resolveImage;
     }
+
+    Rc<DxvkImage> GetHazardImage();
 
     Rc<DxvkBuffer> GetMappingBuffer(UINT Subresource) {
       return m_buffers[Subresource];
@@ -286,7 +289,9 @@ namespace dxvk {
     void RecreateSampledView(UINT Lod) {
       const D3D9_VK_FORMAT_MAPPING formatInfo = m_device->LookupFormat(m_desc.Format);
 
-      m_views.Sample = CreateColorViewPair(formatInfo, AllLayers, VK_IMAGE_USAGE_SAMPLED_BIT, Lod);
+      m_views.Sample = CreateColorViewPair(m_image, formatInfo, AllLayers, VK_IMAGE_USAGE_SAMPLED_BIT, Lod);
+      if (m_hazardImage != nullptr)
+        m_views.Hazard = CreateColorViewPair(m_hazardImage, formatInfo, AllLayers, VK_IMAGE_USAGE_SAMPLED_BIT, Lod);
     }
 
     /**
@@ -315,6 +320,7 @@ namespace dxvk {
 
     Rc<DxvkImage>                 m_image;
     Rc<DxvkImage>                 m_resolveImage;
+    Rc<DxvkImage>                 m_hazardImage;
     D3D9SubresourceArray<
       Rc<DxvkBuffer>>             m_buffers;
     D3D9SubresourceArray<
@@ -338,6 +344,8 @@ namespace dxvk {
     Rc<DxvkImage> CreatePrimaryImage(D3DRESOURCETYPE ResourceType) const;
 
     Rc<DxvkImage> CreateResolveImage() const;
+
+    Rc<DxvkImage> CreateHazardImage() const;
 
     BOOL DetermineShadowState() const;
 
@@ -374,6 +382,7 @@ namespace dxvk {
     static constexpr UINT AllLayers = UINT32_MAX;
 
     Rc<DxvkImageView> CreateView(
+            Rc<DxvkImage>&         Image,
             D3D9_VK_FORMAT_MAPPING FormatInfo,
             UINT                   Layer,
             VkImageUsageFlags      UsageFlags,
@@ -381,6 +390,7 @@ namespace dxvk {
             BOOL                   Srgb);
 
     D3D9ColorView CreateColorViewPair(
+            Rc<DxvkImage>&         Image,
             D3D9_VK_FORMAT_MAPPING FormatInfo,
             UINT                   Layer,
             VkImageUsageFlags      UsageFlags,

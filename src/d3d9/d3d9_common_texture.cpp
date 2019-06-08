@@ -227,6 +227,11 @@ namespace dxvk {
   }
 
 
+  Rc<DxvkImage> D3D9CommonTexture::CreateHazardImage() const {
+    return m_device->GetDXVKDevice()->createImage(m_image->info(), VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+  }
+
+
   BOOL D3D9CommonTexture::DetermineShadowState() const {
     static std::array<D3D9Format, 3> blacklist = {
       D3D9Format::INTZ, D3D9Format::DF16, D3D9Format::DF24
@@ -363,6 +368,7 @@ namespace dxvk {
 
 
   Rc<DxvkImageView> D3D9CommonTexture::CreateView(
+          Rc<DxvkImage>&         Image,
           D3D9_VK_FORMAT_MAPPING FormatInfo,
           UINT                   Layer,
           VkImageUsageFlags      UsageFlags,
@@ -390,20 +396,21 @@ namespace dxvk {
                            VK_COMPONENT_SWIZZLE_IDENTITY, VK_COMPONENT_SWIZZLE_IDENTITY };
 
     // Create the underlying image view object
-    return m_device->GetDXVKDevice()->createImageView(GetImage(), viewInfo);
+    return m_device->GetDXVKDevice()->createImageView(Image, viewInfo);
   }
 
 
   D3D9ColorView D3D9CommonTexture::CreateColorViewPair(
+          Rc<DxvkImage>&         Image,
           D3D9_VK_FORMAT_MAPPING FormatInfo,
           UINT                   Layer,
           VkImageUsageFlags      UsageFlags,
           UINT                   Lod) {
     D3D9ColorView pair;
-    pair.Color  = CreateView(FormatInfo, Layer, UsageFlags, Lod, FALSE);
+    pair.Color  = CreateView(Image, FormatInfo, Layer, UsageFlags, Lod, FALSE);
 
     if (FormatInfo.FormatSrgb != VK_FORMAT_UNDEFINED)
-      pair.Srgb = CreateView(FormatInfo, Layer, UsageFlags, Lod, TRUE);
+      pair.Srgb = CreateView(Image, FormatInfo, Layer, UsageFlags, Lod, TRUE);
     else
       pair.Srgb = pair.Color;
 
@@ -414,24 +421,35 @@ namespace dxvk {
   void D3D9CommonTexture::CreateInitialViews() {
     const D3D9_VK_FORMAT_MAPPING formatInfo = m_device->LookupFormat(m_desc.Format);
 
-    m_views.Sample = CreateColorViewPair(formatInfo, AllLayers, VK_IMAGE_USAGE_SAMPLED_BIT, 0);
+    m_views.Sample = CreateColorViewPair(m_image, formatInfo, AllLayers, VK_IMAGE_USAGE_SAMPLED_BIT, 0);
 
     for (uint32_t i = 0; i < m_desc.ArraySize; i++)
-      m_views.FaceSample[i] = CreateColorViewPair(formatInfo, i, VK_IMAGE_USAGE_SAMPLED_BIT, 0);
+      m_views.FaceSample[i] = CreateColorViewPair(m_image, formatInfo, i, VK_IMAGE_USAGE_SAMPLED_BIT, 0);
 
     if (m_desc.Usage & D3DUSAGE_RENDERTARGET) {
       for (uint32_t i = 0; i < m_desc.ArraySize; i++)
-        m_views.FaceRenderTarget[i] = CreateColorViewPair(formatInfo, i, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT, 0);
+        m_views.FaceRenderTarget[i] = CreateColorViewPair(m_image, formatInfo, i, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT, 0);
     }
 
     if (m_desc.Usage & D3DUSAGE_DEPTHSTENCIL) {
       for (uint32_t i = 0; i < m_desc.ArraySize; i++)
-        m_views.FaceDepth[i] = CreateView(formatInfo, i, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, 0, FALSE);
+        m_views.FaceDepth[i] = CreateView(m_image, formatInfo, i, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, 0, FALSE);
     }
 
     if (m_desc.Usage & D3DUSAGE_AUTOGENMIPMAP)
-      m_views.MipGenRT = CreateView(formatInfo, AllLayers, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT, 0, FALSE);
+      m_views.MipGenRT = CreateView(m_image, formatInfo, AllLayers, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT, 0, FALSE);
   }
+
+  Rc<DxvkImage> D3D9CommonTexture::GetHazardImage() {
+      if (unlikely(m_hazardImage == nullptr)) {
+        const D3D9_VK_FORMAT_MAPPING formatInfo = m_device->LookupFormat(m_desc.Format);
+
+        m_hazardImage = CreateHazardImage();
+        m_views.Hazard = CreateColorViewPair(m_hazardImage, formatInfo, AllLayers, VK_IMAGE_USAGE_SAMPLED_BIT, 0);
+      }
+
+      return m_hazardImage;
+    }
 
 
 }

@@ -3141,7 +3141,7 @@ namespace dxvk {
        || Type == D3DSAMP_BORDERCOLOR)
         m_dirtySamplerStates |= 1u << StateSampler;
       else if (Type == D3DSAMP_SRGBTEXTURE)
-        BindTexture(StateSampler);
+        BindTexture(StateSampler, false);
     }
 
     return D3D_OK;
@@ -3159,7 +3159,7 @@ namespace dxvk {
     
     TextureChangePrivate(m_state.textures[StateSampler], pTexture);
 
-    BindTexture(StateSampler);
+    BindTexture(StateSampler, false);
 
     return D3D_OK;
   }
@@ -4317,7 +4317,9 @@ namespace dxvk {
   }
 
 
-  void D3D9DeviceEx::BindTexture(DWORD StateSampler) {
+  void D3D9DeviceEx::BindTexture(
+            DWORD StateSampler,
+            bool  Hazard) {
     auto shaderSampler = RemapStateSamplerShader(StateSampler);
 
     uint32_t colorSlot = computeResourceSlotId(shaderSampler.first,
@@ -4345,11 +4347,32 @@ namespace dxvk {
 
     const bool depth = commonTex ? commonTex->IsShadow() : false;
 
+    const D3D9_VK_FORMAT_MAPPING formatInfo = LookupFormat(commonTex->Desc()->Format);
+    auto vulkanFormatInfo = imageFormatInfo(formatInfo.FormatColor);
+
+    if (Hazard) {
+      EmitCs([
+          cDstImage   = commonTex->GetHazardImage(),
+          cSrcImage   = commonTex->GetImage(),
+          cFormatInfo = vulkanFormatInfo
+      ](DxvkContext* ctx) {
+        for (uint32_t i = 0; i < cSrcImage->info().mipLevels; i++) {
+          VkImageSubresourceLayers layers = { cFormatInfo->aspectMask, i, 0, cSrcImage->info().numLayers };
+          VkExtent3D extent = cSrcImage->mipLevelExtent(i);
+
+          ctx->copyImage(
+            cDstImage, layers, VkOffset3D { 0, 0, 0 },
+            cSrcImage, layers, VkOffset3D { 0, 0, 0 },
+            cDstImage->mipLevelExtent(layers.mipLevel));
+        }
+      });
+    }
+
     EmitCs([
       cColorSlot = colorSlot,
       cDepthSlot = depthSlot,
       cDepth     = depth,
-      cImageView = commonTex->GetViews().Sample.Pick(srgb)
+      cImageView = !Hazard ? commonTex->GetViews().Sample.Pick(srgb) : commonTex->GetViews().Hazard.Pick(srgb)
     ](DxvkContext* ctx) {
       ctx->bindResourceView(cColorSlot, !cDepth ? cImageView : nullptr, nullptr);
       ctx->bindResourceView(cDepthSlot,  cDepth ? cImageView : nullptr, nullptr);
@@ -4399,7 +4422,7 @@ namespace dxvk {
 
     if (m_flags.test(D3D9DeviceFlag::DirtyBlendState))
       BindBlendState();
-    
+
     if (m_flags.test(D3D9DeviceFlag::DirtyDepthStencilState))
       BindDepthStencilState();
 
@@ -4436,6 +4459,31 @@ namespace dxvk {
     }
 
     UpdateConstants();
+
+    //Check for resource hazards
+    auto* ds = GetCommonTexture(m_state.depthStencil);
+    for (uint32_t i = 0; i < m_state.textures.size(); i++) {
+      auto* tex = GetCommonTexture(m_state.textures[i]);
+
+      auto stateSampler = RemapStateSamplerShader(i);
+      const D3D9CommonShader* shader;
+      if (stateSampler.first == DxsoProgramTypes::VertexShader)
+        shader = m_state.vertexShader != nullptr ? m_state.vertexShader->GetCommonShader() : nullptr;
+      else
+        shader = m_state.pixelShader != nullptr ? m_state.pixelShader->GetCommonShader() : nullptr;
+
+      if (tex == nullptr || shader == nullptr || !shader->usedSamplers().test(stateSampler.second))
+        continue;
+
+      bool hazard = tex == ds;
+      for (uint32_t j = 0; j < m_state.renderTargets.size() && !hazard; j++) {
+        auto* rt = GetCommonTexture(m_state.renderTargets[j]);
+        hazard |= tex == rt;
+      }
+
+      if (hazard)
+        BindTexture(i, true);
+    }
   }
 
 

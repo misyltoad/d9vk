@@ -46,9 +46,14 @@ namespace dxvk {
     const DxsoShaderMetaInfo& GetMeta() const { return m_meta; }
     const DxsoDefinedConstants& GetConstants() const { return m_constants; }
 
+    std::bitset<17> usedSamplers() const { return m_usedSamplers; }
+
   private:
 
     DxsoIsgn              m_isgn;
+
+    // Bit field containing used sampler slots
+    std::bitset<17>              m_usedSamplers;
 
     DxsoShaderMetaInfo    m_meta;
     DxsoDefinedConstants  m_constants;

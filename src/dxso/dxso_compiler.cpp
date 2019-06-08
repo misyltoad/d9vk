@@ -625,6 +625,7 @@ namespace dxvk {
       m_resourceSlots.push_back(resource);
     };
 
+    m_usedSamplers[idx] = true;
     DclSampler(idx, type, false);
     DclSampler(idx, type, true);
 
@@ -634,6 +635,7 @@ namespace dxvk {
       DxsoBindingType::DepthImage, idx);
 
     DxsoSampler& sampler = m_samplers[idx];
+
 
     sampler.depthSpecConst = m_module.specConstBool(true);
     m_module.decorateSpecId(sampler.depthSpecConst, depthBinding);

@@ -4,6 +4,7 @@
 #include "dxso_header.h"
 #include "dxso_modinfo.h"
 #include "dxso_isgn.h"
+#include <bitset>
 
 #include "../spirv/spirv_module.h"
 
@@ -215,6 +216,8 @@ namespace dxvk {
     const DxsoShaderMetaInfo& meta() { return m_meta; }
     const DxsoDefinedConstants& constants() { return m_constants; }
 
+    std::bitset<17> usedSamplers() const { return m_usedSamplers; }
+
   private:
 
     DxsoModuleInfo             m_moduleInfo;
@@ -312,6 +315,10 @@ namespace dxvk {
     // Shader-specific data structures
     DxsoCompilerVsPart m_vs;
     DxsoCompilerPsPart m_ps;
+
+    ///////////////////////////////////
+    // Bit field containing used sampler slots
+    std::bitset<17> m_usedSamplers;
 
     //////////////////////////////////////
     // Common function definition methods
