@@ -2,6 +2,7 @@
 
 #include <iostream>
 #include <cstdint>
+#include <cmath>
 
 namespace dxvk {
 
@@ -56,6 +57,19 @@ namespace dxvk {
   float lengthSqr(const Vector4& a);
   float length(const Vector4& a);
   Vector4 normalize(const Vector4& a);
+
+  inline Vector4 replaceNaN(Vector4 a, float value) {
+    for (uint32_t i = 0; i < 4; i++) {
+      if (std::isnan(a[i]))
+        a[i] = value;
+    }
+
+    return a;
+  }
+
+  inline Vector4 replaceNaN(Vector4 a) {
+    return replaceNaN(a, 0.0f);
+  }
 
   std::ostream& operator<<(std::ostream& os, const Vector4& v);
 
