@@ -145,7 +145,7 @@ namespace dxvk {
   using Vector4  = Vector4Base<float>;
   using Vector4i = Vector4Base<int>;
 
-  inline Vector4 replaceNaN(Vector4 a, float value) {
+  inline Vector4 replaceNaNValue(Vector4 a, float value) {
     for (uint32_t i = 0; i < 4; i++) {
       if (std::isnan(a[i]))
         a[i] = value;
@@ -155,7 +155,7 @@ namespace dxvk {
   }
 
   inline Vector4 replaceNaN(Vector4 a) {
-    return replaceNaN(a, 0.0f);
+    return replaceNaNValue(a, 0.0f);
   }
 
 }
