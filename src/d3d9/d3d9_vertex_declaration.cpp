@@ -53,16 +53,16 @@ namespace dxvk {
       return D3DERR_INVALIDCALL;
 
     if (pElement == nullptr) {
-      *pNumElements = m_elements.size();
+      *pNumElements = m_elements.size() + 1u; // include D3DDECL_END
       return D3D_OK;
     }
-
-    const UINT count = std::min(*pNumElements, UINT(m_elements.size()));
 
     std::memcpy(
       pElement,
       m_elements.data(),
-      sizeof(D3DVERTEXELEMENT9) * count);
+      sizeof(D3DVERTEXELEMENT9) * m_elements.size());
+
+    pElement[m_elements.size()] = D3DDECL_END();
 
     return D3D_OK;
   }
