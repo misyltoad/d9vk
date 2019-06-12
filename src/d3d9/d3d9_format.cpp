@@ -471,6 +471,13 @@ namespace dxvk {
         { VK_COMPONENT_SWIZZLE_R, VK_COMPONENT_SWIZZLE_R,
           VK_COMPONENT_SWIZZLE_R, VK_COMPONENT_SWIZZLE_G }};
 
+      case D3D9Format::R16: return {
+        VK_FORMAT_R16_UNORM,
+        VK_FORMAT_UNDEFINED,
+        VK_IMAGE_ASPECT_COLOR_BIT,
+        { VK_COMPONENT_SWIZZLE_R, VK_COMPONENT_SWIZZLE_ONE,
+          VK_COMPONENT_SWIZZLE_ONE, VK_COMPONENT_SWIZZLE_ONE }};
+
       default:
         Logger::warn(str::format("ConvertFormat: Unknown format encountered: ", Format));
         return {}; // Unsupported
