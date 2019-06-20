@@ -1,8 +1,9 @@
 #pragma once
 
 #include <iostream>
-#include <cstdint>
-#include <cmath>
+
+#include "util_bit.h"
+#include "util_math.h"
 
 namespace dxvk {
 
@@ -132,7 +133,7 @@ namespace dxvk {
   T lengthSqr(const Vector4Base<T>& a) { return dot(a, a); }
 
   template <typename T>
-  float length(const Vector4Base<T>& a) { return sqrtf(float(lengthSqr(a))); }
+  float length(const Vector4Base<T>& a) { return std::sqrt(float(lengthSqr(a))); }
 
   template <typename T>
   Vector4Base<T> normalize(const Vector4Base<T>& a) { return a * T(1.0f / length(a)); }
@@ -145,17 +146,13 @@ namespace dxvk {
   using Vector4  = Vector4Base<float>;
   using Vector4i = Vector4Base<int>;
 
-  inline Vector4 replaceNaNValue(Vector4 a, float value) {
-    for (uint32_t i = 0; i < 4; i++) {
-      if (std::isnan(a[i]))
-        a[i] = value;
-    }
-
-    return a;
-  }
-
   inline Vector4 replaceNaN(Vector4 a) {
-    return replaceNaNValue(a, 0.0f);
+    Vector4 result;
+    __m128 value = _mm_load_ps(a.data);
+    __m128 mask  = _mm_cmpeq_ps(value, value);
+           value = _mm_and_ps(value, mask);
+    _mm_store_ps(result.data, value);
+    return result;
   }
 
 }
