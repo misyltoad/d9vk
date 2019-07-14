@@ -620,6 +620,30 @@ namespace dxvk {
   }
 
 
+  HRESULT D3D9Adapter::GetAdapterDisplayModeEx(
+          D3DDISPLAYMODEEX*   pMode,
+          D3DDISPLAYROTATION* pRotation) {
+    if (pMode == nullptr)
+      return D3DERR_INVALIDCALL;
+
+    DEVMODEW mode = {};
+    mode.dmSize   = sizeof(DEVMODEW);
+
+    if (!EnumDisplaySettingsExW(nullptr, ENUM_CURRENT_SETTINGS, &mode, 0))
+      return D3DERR_INVALIDCALL;
+
+    pMode->Format           = D3DFMT_X8R8G8B8;
+    pMode->Width            = mode.dmPelsWidth;
+    pMode->Height           = mode.dmPelsHeight;
+    pMode->RefreshRate      = mode.dmDisplayFrequency;
+    pMode->ScanLineOrdering = D3DSCANLINEORDERING_PROGRESSIVE;
+    pMode->Size             = sizeof(D3DDISPLAYMODEEX);
+
+    if (pRotation != nullptr)
+      *pRotation = D3DDISPLAYROTATION_IDENTITY;
+  }
+
+
   HRESULT D3D9Adapter::GetAdapterLUID(LUID* pLUID) {
     if (pLUID == nullptr)
       return D3DERR_INVALIDCALL;
