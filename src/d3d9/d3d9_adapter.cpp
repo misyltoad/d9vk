@@ -712,7 +712,7 @@ namespace dxvk {
     monInfo.cbSize = sizeof(monInfo);
 
     if (!::GetMonitorInfoW(GetDefaultMonitor(), reinterpret_cast<MONITORINFO*>(&monInfo))) {
-      Logger::err("D3D9InterfaceEx::CacheModes: failed to query monitor info");
+      Logger::err("D3D9Adapter::CacheModes: failed to query monitor info");
       return;
     }
 
