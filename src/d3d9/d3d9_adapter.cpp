@@ -626,10 +626,18 @@ namespace dxvk {
     if (pMode == nullptr)
       return D3DERR_INVALIDCALL;
 
-    DEVMODEW mode = {};
-    mode.dmSize   = sizeof(DEVMODEW);
+    ::MONITORINFOEXW monInfo;
+    monInfo.cbSize = sizeof(monInfo);
 
-    if (!EnumDisplaySettingsExW(nullptr, ENUM_CURRENT_SETTINGS, &mode, 0))
+    if (!::GetMonitorInfoW(GetDefaultMonitor(), reinterpret_cast<MONITORINFO*>(&monInfo))) {
+      Logger::err("D3D9Adapter::GetAdapterDisplayModeEx: failed to query monitor info");
+      return D3DERR_INVALIDCALL;
+    }
+
+    ::DEVMODEW mode = {};
+    mode.dmSize = sizeof(mode);
+
+    if (!::EnumDisplaySettingsExW(monInfo.szDevice, ENUM_CURRENT_SETTINGS, &mode, 0))
       return D3DERR_INVALIDCALL;
 
     pMode->Format           = D3DFMT_X8R8G8B8;
@@ -641,6 +649,8 @@ namespace dxvk {
 
     if (pRotation != nullptr)
       *pRotation = D3DDISPLAYROTATION_IDENTITY;
+
+    return D3D_OK;
   }
 
 
