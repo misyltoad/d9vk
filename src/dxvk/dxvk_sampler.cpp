@@ -44,22 +44,25 @@ namespace dxvk {
 
 
   VkBorderColor DxvkSampler::getBorderColor(VkClearColorValue borderColor) const {
-    static const std::array<std::pair<VkClearColorValue, VkBorderColor>, 3> s_borderColors = {{
-      { { 0.0f, 0.0f, 0.0f, 0.0f }, VK_BORDER_COLOR_FLOAT_TRANSPARENT_BLACK },
-      { { 0.0f, 0.0f, 0.0f, 1.0f }, VK_BORDER_COLOR_FLOAT_OPAQUE_BLACK },
-      { { 1.0f, 1.0f, 1.0f, 1.0f }, VK_BORDER_COLOR_FLOAT_OPAQUE_WHITE },
+    struct DxvkBorderColor { VkClearColorValue value; VkBorderColor color; float distance; };
+
+    std::array<DxvkBorderColor, 3> borderColors = {{
+      { { 0.0f, 0.0f, 0.0f, 0.0f }, VK_BORDER_COLOR_FLOAT_TRANSPARENT_BLACK, 0.0f },
+      { { 0.0f, 0.0f, 0.0f, 1.0f }, VK_BORDER_COLOR_FLOAT_OPAQUE_BLACK, 0.0f },
+      { { 1.0f, 1.0f, 1.0f, 1.0f }, VK_BORDER_COLOR_FLOAT_OPAQUE_WHITE, 0.0f },
     }};
 
-    for (const auto& e : s_borderColors) {
-      if (!std::memcmp(&e.first, &borderColor, sizeof(VkClearColorValue)))
-        return e.second;
+    for (auto& e : borderColors) {
+      for (uint32_t i = 0; i < 4; i++)
+        e.distance += std::abs(e.value.float32[i] - borderColor.float32[i]) / 4.0f;
     }
 
-    Logger::warn(str::format(
-      "DXVK: No matching border color found for (",
-      borderColor.float32[0], ",", borderColor.float32[1], ",",
-      borderColor.float32[2], ",", borderColor.float32[3], ")"));
-    return VK_BORDER_COLOR_FLOAT_TRANSPARENT_BLACK;
+    std::sort(borderColors.begin(), borderColors.end(),
+      [] (const auto& a, const auto& b) {
+        return a.distance < b.distance;
+    });
+
+    return borderColors[0].color;
   }
   
 }
