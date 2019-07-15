@@ -4567,10 +4567,12 @@ namespace dxvk {
     }
     else {
       scissor = VkRect2D{
-        VkOffset2D { 0, 0 },
+        VkOffset2D {
+          int32_t(vp.X),
+          int32_t(vp.Y) },
         VkExtent2D {
-          16383,
-          16383 } };
+          vp.Width,
+          vp.Height } };
     }
 
     EmitCs([
