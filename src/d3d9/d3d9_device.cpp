@@ -3888,6 +3888,11 @@ namespace dxvk {
 
     DxvkBufferSliceHandle physSlice;
 
+    if (SizeToLock == 0)
+      SizeToLock = pResource->Desc()->Size - OffsetToLock;
+
+    pResource->LockRange() = D3D9Range(OffsetToLock, OffsetToLock + SizeToLock);
+
     if (Flags & D3DLOCK_DISCARD) {
       // Allocate a new backing slice for the buffer and set
       // it as the 'new' mapped slice. This assumes that the
@@ -3905,10 +3910,18 @@ namespace dxvk {
       // NOOVERWRITE promises that they will not write in a currently used area.
       // READONLY promises they will only read -- and we never write to these buffers from the GPU
       // Therefore we can skip waiting for these two cases.
-      bool skipWait = (Flags & D3DLOCK_NOOVERWRITE) || (Flags & D3DLOCK_READONLY);
+      bool dirtyRangeOverlap = true;
+
+      if (pResource->GetMapMode() == D3D9_COMMON_BUFFER_MAP_MODE_BUFFER && !(Flags & D3DLOCK_READONLY))
+        dirtyRangeOverlap = pResource->DirtyRange().overlap(pResource->LockRange());
+
+      bool skipWait = (Flags & D3DLOCK_NOOVERWRITE) || (Flags & D3DLOCK_READONLY) || !dirtyRangeOverlap;
 
       // Wait until the resource is no longer in use
       if (!skipWait) {
+        if (!(Flags & D3DLOCK_DONOTWAIT))
+          pResource->DirtyRange().clear();
+
         if (!WaitForResource(mappingBuffer, Flags))
           return D3DERR_WASSTILLDRAWING;
       }
@@ -3945,14 +3958,15 @@ namespace dxvk {
 
     EmitCs([
       cDstSlice = dstBuffer,
-      cSrcSlice = srcBuffer
+      cSrcSlice = srcBuffer,
+      cRange    = pResource->LockRange()
     ] (DxvkContext* ctx) {
       ctx->copyBuffer(
         cDstSlice.buffer(),
-        cDstSlice.offset(),
+        cDstSlice.offset() + cRange.min,
         cSrcSlice.buffer(),
-        cSrcSlice.offset(),
-        cSrcSlice.length());
+        cSrcSlice.offset() + cRange.min,
+        cRange.max - cRange.min);
     });
 
     return D3D_OK;
