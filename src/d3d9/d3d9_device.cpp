@@ -3888,8 +3888,12 @@ namespace dxvk {
 
     DxvkBufferSliceHandle physSlice;
 
-    if (SizeToLock == 0)
-      SizeToLock = pResource->Desc()->Size - OffsetToLock;
+    const UINT maxLockSize = pResource->Desc()->Size - OffsetToLock;
+
+    // We can only respect this for these cases -- otherwise R/W OOB still get copied on native
+    // and some stupid games depend on that.
+    const bool respectSize = (pResource->Desc()->Usage & D3DUSAGE_DYNAMIC) || pResource->Desc()->Pool == D3DPOOL_MANAGED;
+    SizeToLock = SizeToLock == 0 || !respectSize ? maxLockSize : std::min(SizeToLock, pResource->Desc()->Size - OffsetToLock);
 
     pResource->LockRange() = D3D9Range(OffsetToLock, OffsetToLock + SizeToLock);
 
