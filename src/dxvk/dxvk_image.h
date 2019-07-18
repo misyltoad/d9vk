@@ -260,6 +260,15 @@ namespace dxvk {
         result |= m_viewFormats[i] == format;
       return result;
     }
+
+    /**
+     * \brief Memory size
+     * 
+     * \returns The memory size of the image
+     */
+    VkDeviceSize memSize() const {
+      return m_memory.length();
+    }
     
   private:
     
