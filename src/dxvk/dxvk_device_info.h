@@ -38,6 +38,7 @@ namespace dxvk {
     VkPhysicalDeviceShaderDemoteToHelperInvocationFeaturesEXT extShaderDemoteToHelperInvocation;
     VkPhysicalDeviceTransformFeedbackFeaturesEXT              extTransformFeedback;
     VkPhysicalDeviceVertexAttributeDivisorFeaturesEXT         extVertexAttributeDivisor;
+    VkPhysicalDeviceDepthBiasFeaturesJOSH                     joshDepthBias;
   };
 
 }

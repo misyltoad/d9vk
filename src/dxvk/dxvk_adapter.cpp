@@ -245,7 +245,7 @@ namespace dxvk {
   Rc<DxvkDevice> DxvkAdapter::createDevice(std::string clientApi, DxvkDeviceFeatures enabledFeatures) {
     DxvkDeviceExtensions devExtensions;
 
-    std::array<DxvkExt*, 22> devExtensionList = {{
+    std::array<DxvkExt*, 23> devExtensionList = {{
       &devExtensions.amdMemoryOverallocationBehaviour,
       &devExtensions.amdShaderFragmentMask,
       &devExtensions.extConditionalRendering,
@@ -268,6 +268,7 @@ namespace dxvk {
       &devExtensions.khrSamplerMirrorClampToEdge,
       &devExtensions.khrShaderDrawParameters,
       &devExtensions.khrSwapchain,
+      &devExtensions.joshDepthBiasInfo,
     }};
 
     DxvkNameSet extensionsEnabled;
@@ -329,6 +330,12 @@ namespace dxvk {
       enabledFeatures.extVertexAttributeDivisor.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VERTEX_ATTRIBUTE_DIVISOR_FEATURES_EXT;
       enabledFeatures.extVertexAttributeDivisor.pNext = enabledFeatures.core.pNext;
       enabledFeatures.core.pNext = &enabledFeatures.extVertexAttributeDivisor;
+    }
+
+    if (devExtensions.joshDepthBiasInfo) {
+      enabledFeatures.joshDepthBias.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DEPTH_BIAS_FEATURES_JOSH;
+      enabledFeatures.joshDepthBias.pNext = enabledFeatures.core.pNext;
+      enabledFeatures.core.pNext = &enabledFeatures.joshDepthBias;
     }
 
     // Report the desired overallocation behaviour to the driver
@@ -543,6 +550,11 @@ namespace dxvk {
     if (m_deviceExtensions.supports(VK_EXT_VERTEX_ATTRIBUTE_DIVISOR_EXTENSION_NAME) >= 3) {
       m_deviceFeatures.extVertexAttributeDivisor.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VERTEX_ATTRIBUTE_DIVISOR_FEATURES_EXT;
       m_deviceFeatures.extVertexAttributeDivisor.pNext = std::exchange(m_deviceFeatures.core.pNext, &m_deviceFeatures.extVertexAttributeDivisor);
+    }
+
+    if (m_deviceExtensions.supports(VK_JOSH_DEPTH_BIAS_INFO_EXTENSION_NAME)) {
+      m_deviceFeatures.joshDepthBias.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DEPTH_BIAS_FEATURES_JOSH;
+      m_deviceFeatures.joshDepthBias.pNext = std::exchange(m_deviceFeatures.core.pNext, &m_deviceFeatures.joshDepthBias);
     }
 
     m_vki->vkGetPhysicalDeviceFeatures2KHR(m_handle, &m_deviceFeatures.core);

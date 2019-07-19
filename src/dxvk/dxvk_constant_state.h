@@ -54,6 +54,18 @@ namespace dxvk {
 
 
   /**
+   * \brief Depth bias info
+   * 
+   * Meta about the depth bias
+   */
+  struct DxvkDepthBiasInfo {
+    VkBool32            useDepthBiasScale;
+    float               depthBiasScale;
+    VkDepthBiasModeJOSH depthBiasMode;
+  };
+
+
+  /**
    * \brief Depth bounds
    * 
    * Stores depth bounds values.

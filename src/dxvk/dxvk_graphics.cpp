@@ -332,9 +332,16 @@ namespace dxvk {
     xfbStreamInfo.flags           = 0;
     xfbStreamInfo.rasterizationStream = uint32_t(rasterizedStream);
 
+    VkPipelineRasterizationDepthBiasCreateInfoJOSH depthBiasInfo;
+    depthBiasInfo.sType             = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_DEPTH_BIAS_CREATE_INFO_JOSH;
+    depthBiasInfo.pNext             = nullptr;
+    depthBiasInfo.useDepthBiasScale = m_pipeMgr->m_device->features().joshDepthBias.userScale && state.depthBiasInfo.useDepthBiasScale;
+    depthBiasInfo.depthBiasMode     = state.depthBiasInfo.depthBiasMode;
+    depthBiasInfo.depthBiasScale    = state.depthBiasInfo.depthBiasScale;
+
     VkPipelineRasterizationDepthClipStateCreateInfoEXT rsDepthClipInfo;
     rsDepthClipInfo.sType         = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_DEPTH_CLIP_STATE_CREATE_INFO_EXT;
-    rsDepthClipInfo.pNext         = nullptr;
+    rsDepthClipInfo.pNext         = &depthBiasInfo;
     rsDepthClipInfo.flags         = 0;
     rsDepthClipInfo.depthClipEnable = state.rsDepthClipEnable;
 

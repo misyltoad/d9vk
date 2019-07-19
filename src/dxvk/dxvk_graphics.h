@@ -111,6 +111,8 @@ namespace dxvk {
     VkComponentMapping                  omComponentMapping[MaxNumRenderTargets];
 
     uint32_t                            scSpecConstants[MaxNumSpecConstants];
+
+    DxvkDepthBiasInfo                   depthBiasInfo;
   };
   
   

@@ -2171,6 +2171,12 @@ namespace dxvk {
   }
 
 
+  void DxvkContext::setDepthBiasInfo(
+          DxvkDepthBiasInfo   depthBiasInfo) {
+    m_state.gp.state.depthBiasInfo = depthBiasInfo;
+  }
+
+
   void DxvkContext::setDepthBounds(
           DxvkDepthBounds     depthBounds) {
     if (m_state.dyn.depthBounds != depthBounds) {

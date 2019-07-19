@@ -831,6 +831,12 @@ namespace dxvk {
      */
     void setDepthBias(
             DxvkDepthBias       depthBias);
+
+    /**
+     * \brief Sets depth bias info
+     */
+    void setDepthBiasInfo(
+            DxvkDepthBiasInfo   depthBiasInfo);
     
     /**
      * \brief Sets depth bounds
