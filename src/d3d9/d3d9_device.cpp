@@ -62,6 +62,16 @@ namespace dxvk {
     ] (DxvkContext* ctx) {
       ctx->beginRecording(cDevice->createCommandList());
 
+      bool floatSupported = cDevice->features().joshDepthBias.modeFloat;
+
+      DxvkDepthBiasInfo depthBiasInfo;
+      depthBiasInfo.depthBiasMode      = floatSupported
+                                       ? VK_DEPTH_BIAS_MODE_FLOAT_JOSH
+                                       : VK_DEPTH_BIAS_MODE_LEAST_REPRESENTABLE_JOSH;
+      depthBiasInfo.depthBiasScale     = 1.0f;
+      depthBiasInfo.useDepthBiasScale  = VK_TRUE;
+      ctx->setDepthBiasInfo(depthBiasInfo);
+
       DxvkLogicOpState loState;
       loState.enableLogicOp = VK_FALSE;
       loState.logicOp       = VK_LOGIC_OP_CLEAR;
@@ -3478,6 +3488,8 @@ namespace dxvk {
     enabled.extVertexAttributeDivisor.vertexAttributeInstanceRateDivisor = supported.extVertexAttributeDivisor.vertexAttributeInstanceRateDivisor;
     enabled.extVertexAttributeDivisor.vertexAttributeInstanceRateZeroDivisor = supported.extVertexAttributeDivisor.vertexAttributeInstanceRateZeroDivisor;
 
+    enabled.joshDepthBias = supported.joshDepthBias;
+
     // DXVK Meta
     enabled.core.features.shaderStorageImageWriteWithoutFormat = VK_TRUE;
     enabled.core.features.shaderStorageImageExtendedFormats    = VK_TRUE;
@@ -4510,12 +4522,14 @@ namespace dxvk {
   void D3D9DeviceEx::BindRasterizerState() {
     m_flags.clr(D3D9DeviceFlag::DirtyRasterizerState);
 
-    // TODO: Can we get a specific non-magic number in Vulkan for this based on device/adapter?
-    constexpr float DepthBiasFactor = float(1 << 23);
-
     auto& rs = m_state.renderStates;
 
-    float depthBias            = bit::cast<float>(rs[D3DRS_DEPTHBIAS]) * DepthBiasFactor;
+    float depthBias = bit::cast<float>(rs[D3DRS_DEPTHBIAS]);
+
+    // Fallback factor when VK_JOSH_depth_bias_info is unsupported...
+    if (!m_dxvkDevice->features().joshDepthBias.modeFloat)
+      depthBias *= float(1 << 23);
+
     float slopeScaledDepthBias = bit::cast<float>(rs[D3DRS_SLOPESCALEDEPTHBIAS]);
 
     DxvkRasterizerState state;
