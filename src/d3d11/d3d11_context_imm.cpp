@@ -20,6 +20,19 @@ namespace dxvk {
     ] (DxvkContext* ctx) {
       ctx->beginRecording(cDevice->createCommandList());
 
+      auto adapter = cDevice->adapter();
+      // Force vendor bias scale for AMD hardware where
+      //  the defaults in Vulkan become an issue.
+      bool forceBiasScale = adapter->matchesDriver(DxvkGpuVendor::Amd, VK_DRIVER_ID_MESA_RADV_KHR,       0, 0)
+                         || adapter->matchesDriver(DxvkGpuVendor::Amd, VK_DRIVER_ID_AMD_OPEN_SOURCE_KHR, 0, 0)
+                         || adapter->matchesDriver(DxvkGpuVendor::Amd, VK_DRIVER_ID_AMD_PROPRIETARY_KHR, 0, 0);
+
+      DxvkDepthBiasInfo depthBiasInfo;
+      depthBiasInfo.depthBiasMode      = VK_DEPTH_BIAS_MODE_FLOAT_JOSH;
+      depthBiasInfo.depthBiasScale     = 1.0f;
+      depthBiasInfo.useDepthBiasScale  = forceBiasScale;
+      ctx->setDepthBiasInfo(depthBiasInfo);
+
       if (cRelaxedBarriers)
         ctx->setBarrierControl(DxvkBarrierControl::IgnoreWriteAfterWrite);
     });
