@@ -507,6 +507,8 @@ typedef enum VkStructureType {
     VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_DEMOTE_TO_HELPER_INVOCATION_FEATURES_EXT = 1000276000,
     VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TEXEL_BUFFER_ALIGNMENT_FEATURES_EXT = 1000281000,
     VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TEXEL_BUFFER_ALIGNMENT_PROPERTIES_EXT = 1000281001,
+    VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_DEPTH_BIAS_CREATE_INFO_JOSH = 100029100, // VK_JOSH_depth_bias_info
+    VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DEPTH_BIAS_FEATURES_JOSH = 100029101, // VK_JOSH_depth_bias_info
     VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VARIABLE_POINTER_FEATURES = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VARIABLE_POINTERS_FEATURES,
     VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_DRAW_PARAMETER_FEATURES = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_DRAW_PARAMETERS_FEATURES,
     VK_STRUCTURE_TYPE_DEBUG_REPORT_CREATE_INFO_EXT = VK_STRUCTURE_TYPE_DEBUG_REPORT_CALLBACK_CREATE_INFO_EXT,
@@ -9508,6 +9510,51 @@ typedef struct VkPhysicalDeviceTexelBufferAlignmentPropertiesEXT {
     VkDeviceSize       uniformTexelBufferOffsetAlignmentBytes;
     VkBool32           uniformTexelBufferOffsetSingleTexelAlignment;
 } VkPhysicalDeviceTexelBufferAlignmentPropertiesEXT;
+
+
+
+#define VK_JOSH_depth_bias_info 1
+#define VK_JOSH_DEPTH_BIAS_INFO_SPEC_VERSION 1
+#define VK_JOSH_DEPTH_BIAS_INFO_EXTENSION_NAME "VK_JOSH_depth_bias_info"
+
+///////////////////////
+//VkDepthBiasModeJOSH//
+///////////////////////
+// VK_DEPTH_BIAS_MODE_LEAST_REPRESENTABLE_JOSH (default w/o struct)
+// -> The given depth bias value in VkPipelineRasterizationStateCreateInfo is
+//    treat like a least representable value of the given depth format, r = format dependent
+////
+// VK_DEPTH_BIAS_MODE_FLOAT_JOSH
+// -> The given depth bias value in VkPipelineRasterizationStateCreateInfo is
+//    treat like a floating point number. r = 1
+//
+typedef enum VkDepthBiasModeJOSH {
+    VK_DEPTH_BIAS_MODE_LEAST_REPRESENTABLE_JOSH = 0,
+    VK_DEPTH_BIAS_MODE_FLOAT_JOSH = 1,
+    VK_DEPTH_BIAS_MODE_MAX_ENUM_JOSH = 0x7FFFFFFF
+} VkDepthBiasModeJOSH;
+
+//////////////////
+//depthBiasScale//
+//////////////////
+// depthBiasScale allows complete control of the vendor's scale for the depth bias
+// only enabled if the useDepthBiasScale is VK_TRUE
+
+// pNext of VkPipelineRasterizationStateCreateInfo
+typedef struct VkPipelineRasterizationDepthBiasCreateInfoJOSH {
+    VkStructureType                                        sType;
+    const void*                                            pNext;
+    VkBool32                                               useDepthBiasScale;
+    float                                                  depthBiasScale;
+    VkDepthBiasModeJOSH                                    depthBiasMode;
+} VkPipelineRasterizationDepthBiasCreateInfoJOSH;
+
+typedef struct VkPhysicalDeviceDepthBiasFeaturesJOSH {
+    VkStructureType    sType;
+    void*              pNext;
+    VkBool32           modeFloat;
+    VkBool32           userScale;
+} VkPhysicalDeviceDepthBiasFeaturesJOSH;
 
 
 #ifdef __cplusplus
