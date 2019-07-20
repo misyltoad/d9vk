@@ -64,6 +64,8 @@ namespace dxvk {
 
       bool floatSupported = cDevice->features().joshDepthBias.modeFloat;
 
+      Logger::info(str::format("Using depth bias mode: ", floatSupported ? "float" : "lrv"));
+
       DxvkDepthBiasInfo depthBiasInfo;
       depthBiasInfo.depthBiasMode      = floatSupported
                                        ? VK_DEPTH_BIAS_MODE_FLOAT_JOSH
