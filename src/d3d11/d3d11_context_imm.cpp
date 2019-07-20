@@ -27,6 +27,10 @@ namespace dxvk {
                          || adapter->matchesDriver(DxvkGpuVendor::Amd, VK_DRIVER_ID_AMD_OPEN_SOURCE_KHR, 0, 0)
                          || adapter->matchesDriver(DxvkGpuVendor::Amd, VK_DRIVER_ID_AMD_PROPRIETARY_KHR, 0, 0);
 
+      forceBiasScale &= cDevice->features().joshDepthBias.userScale;
+
+      Logger::info(str::format("Using depth bias scale: ", forceBiasScale ? "1.0f" : "vendor"));
+
       DxvkDepthBiasInfo depthBiasInfo;
       depthBiasInfo.depthBiasMode      = VK_DEPTH_BIAS_MODE_FLOAT_JOSH;
       depthBiasInfo.depthBiasScale     = 1.0f;
