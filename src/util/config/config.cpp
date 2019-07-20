@@ -195,6 +195,10 @@ namespace dxvk {
     { "GTAIV.exe", {{
       { "d3d9.hasHazards",                  "True" },
     }} },
+    /* Deadlight                                  */
+    { "LOTDGame.exe", {{
+      { "d3d9.hasHazards",                  "True" },
+    }} },
   }};
 
 
