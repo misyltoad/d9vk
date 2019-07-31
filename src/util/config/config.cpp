@@ -351,6 +351,29 @@ namespace dxvk {
     result = sign * intval;
     return true;
   }
+
+
+  bool Config::parseOptionValue(
+    const std::string&  value,
+          uint32_t&     result) {
+    if (value.size() == 0)
+      return false;
+
+    // Parse absolute number
+    uint32_t uintval = 0;
+
+    for (size_t i = 0; i < value.size(); i++) {
+      if (value[i] < '0' || value[i] > '9')
+        return false;
+      
+      uintval *= 10;
+      uintval += value[i] - '0';
+    }
+
+    // Return result
+    result = uintval;
+    return true;
+  }
   
   
   bool Config::parseOptionValue(
