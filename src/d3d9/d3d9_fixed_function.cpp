@@ -331,12 +331,6 @@ namespace dxvk {
         // Project is already removed in the key.
         uint32_t count = type;
 
-        uint32_t zero = m_module.constf32(0.0f);
-        uint32_t one  = m_module.constf32(1.0f);
-
-        for (uint32_t i = count; i < 4; i++)
-          transformed = m_module.opCompositeInsert(m_vec4Type, zero, transformed, 1, &i);
-
         transformed = m_module.opVectorTimesMatrix(m_vec4Type, transformed, m_vs.constants.texcoord[i]);
 
         // Apply the offset on the next row. (why does this exist...)
