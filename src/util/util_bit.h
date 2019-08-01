@@ -75,10 +75,8 @@ namespace dxvk::bit {
   }
 
   inline uint32_t lzcnt(uint32_t n) {
-    #if defined(_MSC_VER)
+    #if defined(_MSC_VER) || defined(__LZCNT__)
     return _lzcnt_u32(n);
-    #elif defined(__BMI__)
-    return __lzcnt_u32(n);
     #elif defined(__GNUC__)
     return n != 0 ? __builtin_clz(n) : 32;
     #else
