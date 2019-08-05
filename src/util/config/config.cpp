@@ -196,6 +196,10 @@ namespace dxvk {
     { "NostaleClientX.exe", {{
       { "d3d9.allowLockFlagReadonly",       "False" },
     }} },
+    /* GTA Episodes from Liberty City             */
+    { "EFLC.exe", {{
+      { "d3d9.hasHazards",                  "True" },
+    }} }
   }};
 
 
