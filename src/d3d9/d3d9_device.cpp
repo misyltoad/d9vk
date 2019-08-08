@@ -2211,26 +2211,68 @@ namespace dxvk {
           IDirect3DVertexBuffer9*      pDestBuffer,
           IDirect3DVertexDeclaration9* pVertexDecl,
           DWORD                        Flags) {
-    Logger::warn("D3D9DeviceEx::ProcessVertices: Stub");
-    D3D9VertexBuffer* dst = static_cast<D3D9VertexBuffer*>(pDestBuffer);
-
-    // Let's avoid some vertex explosions here...
-    // This is not an actual implementation.
-    // Just makes some games slightly more playable.
-
-    if (unlikely(dst == nullptr))
+    if (unlikely(pDestBuffer == nullptr || pVertexDecl == nullptr))
       return D3DERR_INVALIDCALL;
 
-    uint32_t size = dst->GetCommonBuffer()->Desc()->Size;
+    D3D9CommonBuffer* dst  = static_cast<D3D9VertexBuffer*>(pDestBuffer)->GetCommonBuffer();
+    D3D9VertexDecl*   decl = static_cast<D3D9VertexDecl*>  (pVertexDecl);
 
-    void* data = nullptr;
-    HRESULT hr = dst->Lock(0, size, &data, D3DLOCK_DISCARD);
-    if (FAILED(hr))
-      return D3DERR_INVALIDCALL;
+    PrepareDraw(false);
 
-    std::memset(data, 0, size);
+    if (decl == nullptr) {
+      this->SetFVF(dst->Desc()->FVF);
 
-    dst->Unlock();
+      decl = m_state.vertexDecl;
+    }
+
+    uint32_t offset = DestIndex * decl->GetSize();
+
+    auto slice = dst->GetBufferSlice<D3D9_COMMON_BUFFER_TYPE_REAL>();
+         slice = slice.subSlice(offset, slice.length() - offset);
+
+    Rc<DxvkShader> shader = m_swvpEmulator.GenerateGeometryShader(decl);
+
+    EmitCs([this,
+      cVertexCount   = VertexCount,
+      cStartIndex    = SrcStartIndex,
+      cInstanceCount = GetInstanceCount(),
+      cShader        = std::move(shader),
+      cBufferSlice   = slice
+    ](DxvkContext* ctx) {
+      auto drawInfo = GenerateDrawInfo(D3DPT_POINTLIST, cVertexCount, cInstanceCount);
+      ApplyPrimitiveType(ctx, D3DPT_POINTLIST);
+
+      ctx->bindShader(VK_SHADER_STAGE_GEOMETRY_BIT, cShader);
+      ctx->bindResourceBuffer(getSWVPBufferSlot(), cBufferSlice);
+      /*ctx->drawIndexed(
+        drawInfo.vertexCount, 1,//drawInfo.instanceCount,
+        cStartIndex,
+        0, 0);*/
+      ctx->draw(
+        drawInfo.vertexCount, 1,//drawInfo.instanceCount,
+        cStartIndex,
+        0);
+      ctx->bindResourceBuffer(getSWVPBufferSlot(), DxvkBufferSlice());
+      ctx->bindShader(VK_SHADER_STAGE_GEOMETRY_BIT, nullptr);
+    });
+
+    if (dst->GetMapMode() == D3D9_COMMON_BUFFER_MAP_MODE_BUFFER) {
+      uint32_t copySize = VertexCount * decl->GetSize();
+
+      EmitCs([
+        cSrcBuffer = dst->GetBuffer<D3D9_COMMON_BUFFER_TYPE_REAL>(),
+        cDstBuffer = dst->GetBuffer<D3D9_COMMON_BUFFER_TYPE_MAPPING>(),
+        cOffset    = offset,
+        cCopySize  = copySize
+      ](DxvkContext* ctx) {
+        ctx->copyBuffer(cDstBuffer, cOffset, cSrcBuffer, cOffset, cCopySize);
+      });
+    }
+
+    // We need to force a flush here in case the user tries to read back the data.
+    // This allows us to avoid waiting elsewhere in other circumstances.
+    Flush();
+    SynchronizeCsThread();
 
     return D3D_OK;
   }
@@ -3572,6 +3614,9 @@ namespace dxvk {
 
     enabled.extVertexAttributeDivisor.vertexAttributeInstanceRateDivisor = supported.extVertexAttributeDivisor.vertexAttributeInstanceRateDivisor;
     enabled.extVertexAttributeDivisor.vertexAttributeInstanceRateZeroDivisor = supported.extVertexAttributeDivisor.vertexAttributeInstanceRateZeroDivisor;
+
+    // ProcessVertices
+    enabled.core.features.vertexPipelineStoresAndAtomics = VK_TRUE;
 
     // DXVK Meta
     enabled.core.features.shaderStorageImageWriteWithoutFormat = VK_TRUE;

@@ -41,7 +41,7 @@ namespace dxvk {
 
     void SetFVF(DWORD FVF);
 
-    const std::vector<D3DVERTEXELEMENT9>& GetElements() {
+    const std::vector<D3DVERTEXELEMENT9>& GetElements() const {
       return m_elements;
     }
 
@@ -49,7 +49,7 @@ namespace dxvk {
       if (m_elements.size() == 0)
         return 0;
 
-      auto& end = *m_elements.end();
+      auto& end = m_elements.back();
       return end.Offset + GetDecltypeSize(D3DDECLTYPE(end.Type));
     }
 
