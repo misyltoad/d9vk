@@ -80,6 +80,8 @@ namespace dxvk {
       uint32_t float_t    = m_module.defFloatType(32);
       uint32_t vec4_t     = m_module.defVectorType(float_t, 4);
 
+      uint32_t vec4_singular_array_t = m_module.defArrayType(vec4_t, m_module.constu32(1));
+
       // Setup the buffer
       uint32_t bufferSlot = getSWVPBufferSlot();
 
@@ -119,21 +121,29 @@ namespace dxvk {
         // Load the slot associated with this element
         DxsoSemantic semantic = { DxsoUsage(element.Usage), element.UsageIndex };
 
-        uint32_t elementPtr = m_module.newVar(m_module.defPointerType(vec4_t, spv::StorageClassInput), spv::StorageClassInput);
+        uint32_t elementPtr;
+        uint32_t elementVar;
 
         if ((semantic.usage == DxsoUsage::Position || semantic.usage == DxsoUsage::PositionT) && element.UsageIndex == 0) {
+          elementPtr = m_module.newVar(m_module.defPointerType(vec4_t, spv::StorageClassInput), spv::StorageClassInput);
           // Load from builtin
           m_module.decorateBuiltIn(elementPtr, spv::BuiltInPosition);
+
+          elementVar = m_module.opLoad(vec4_t, elementPtr);
         }
         else {
           // Load from slot
+          elementPtr = m_module.newVar(m_module.defPointerType(vec4_singular_array_t, spv::StorageClassInput), spv::StorageClassInput);
           uint32_t slotIdx      = RegisterLinkerSlot(semantic);
 
           m_module.decorateLocation(elementPtr, slotIdx);
           m_interfaceSlots.inputSlots |= 1u << slotIdx;
+
+          uint32_t zero = m_module.constu32(0);
+          elementVar = m_module.opAccessChain(m_module.defPointerType(vec4_t, spv::StorageClassInput), elementPtr, 1, &zero);
+          elementVar = m_module.opLoad(vec4_t, elementVar);
         }
 
-        uint32_t elementVar = m_module.opLoad(vec4_t, elementPtr);
         m_entryPointInterfaces.push_back(elementPtr);
 
         // The offset of this element from the beginning of any given vertex
