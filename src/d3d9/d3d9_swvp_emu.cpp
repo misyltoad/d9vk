@@ -124,25 +124,22 @@ namespace dxvk {
         uint32_t elementPtr;
         uint32_t elementVar;
 
+        elementPtr = m_module.newVar(m_module.defPointerType(vec4_singular_array_t, spv::StorageClassInput), spv::StorageClassInput);
         if ((semantic.usage == DxsoUsage::Position || semantic.usage == DxsoUsage::PositionT) && element.UsageIndex == 0) {
-          elementPtr = m_module.newVar(m_module.defPointerType(vec4_t, spv::StorageClassInput), spv::StorageClassInput);
           // Load from builtin
           m_module.decorateBuiltIn(elementPtr, spv::BuiltInPosition);
-
-          elementVar = m_module.opLoad(vec4_t, elementPtr);
         }
         else {
           // Load from slot
-          elementPtr = m_module.newVar(m_module.defPointerType(vec4_singular_array_t, spv::StorageClassInput), spv::StorageClassInput);
           uint32_t slotIdx      = RegisterLinkerSlot(semantic);
 
           m_module.decorateLocation(elementPtr, slotIdx);
           m_interfaceSlots.inputSlots |= 1u << slotIdx;
-
-          uint32_t zero = m_module.constu32(0);
-          elementVar = m_module.opAccessChain(m_module.defPointerType(vec4_t, spv::StorageClassInput), elementPtr, 1, &zero);
-          elementVar = m_module.opLoad(vec4_t, elementVar);
         }
+
+        uint32_t zero = m_module.constu32(0);
+        elementVar = m_module.opAccessChain(m_module.defPointerType(vec4_t, spv::StorageClassInput), elementPtr, 1, &zero);
+        elementVar = m_module.opLoad(vec4_t, elementVar);
 
         m_entryPointInterfaces.push_back(elementPtr);
 
