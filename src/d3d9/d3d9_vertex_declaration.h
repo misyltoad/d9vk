@@ -41,7 +41,7 @@ namespace dxvk {
 
     void SetFVF(DWORD FVF);
 
-    const std::vector<D3DVERTEXELEMENT9>& GetElements() const {
+    const D3D9VertexElements& GetElements() const {
       return m_elements;
     }
 
@@ -63,7 +63,7 @@ namespace dxvk {
 
     D3D9VertexDeclFlags            m_flags;
 
-    std::vector<D3DVERTEXELEMENT9> m_elements;
+    D3D9VertexElements             m_elements;
 
     DWORD                          m_fvf;
 

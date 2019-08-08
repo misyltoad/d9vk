@@ -6,6 +6,40 @@
 
 namespace dxvk {
 
+  // Doesn't compare everything, only what we use in SWVP.
+
+  size_t D3D9SWVPHash::operator () (const D3D9VertexElements& key) const {
+    DxvkHashState hash;
+
+    std::hash<BYTE> bytehash;
+    std::hash<WORD> wordhash;
+
+    for (auto& element : key) {
+      hash.add(wordhash(element.Offset));
+      hash.add(bytehash(element.Type));
+      hash.add(bytehash(element.Usage));
+      hash.add(bytehash(element.UsageIndex));
+    }
+
+    return hash;
+  }
+
+  bool D3D9SWVPEq::operator () (const D3D9VertexElements& a, const D3D9VertexElements& b) const {
+    if (a.size() != b.size())
+      return false;
+
+    bool equal = true;
+
+    for (uint32_t i = 0; i < a.size(); i++) {
+      equal &= a[i].Offset      == b[i].Offset;
+      equal &= a[i].Type        == b[i].Type;
+      equal &= a[i].Usage       == b[i].Usage;
+      equal &= a[i].UsageIndex  == b[i].UsageIndex;
+    }
+
+    return equal;
+  }
+
   enum class DecltypeClass {
     Float, Byte, Short, Dec, Half
   };
@@ -273,24 +307,43 @@ namespace dxvk {
 
   };
 
-  std::atomic<uint32_t> swvpShaderCount = 0;
+  Rc<DxvkShader> D3D9SWVPEmulator::GetShaderModule(const D3D9VertexDecl* pDecl) {
+    auto& elements = pDecl->GetElements();
 
-  Rc<DxvkShader> D3D9SWVPEmulator::GenerateGeometryShader(const D3D9VertexDecl* pDecl) {
+    // Use the shader's unique key for the lookup
+    { std::unique_lock<std::mutex> lock(m_mutex);
+      
+      auto entry = m_modules.find(elements);
+      if (entry != m_modules.end())
+        return entry->second;
+    }
+    
+    // This shader has not been compiled yet, so we have to create a
+    // new module. This takes a while, so we won't lock the structure.
     D3D9SWVPEmulatorGenerator generator;
     generator.compile(pDecl);
-
-    Rc<DxvkShader> shader =  generator.finalize();
+    Rc<DxvkShader> shader = generator.finalize();
 
     const std::string dumpPath = env::getEnvVar("DXVK_SHADER_DUMP_PATH");
 
     if (dumpPath.size() != 0) {
-      D3D9FFShaderKeyHash hash;
+      D3D9SWVPHash hash;
 
       std::ofstream dumpStream(
-        str::format(dumpPath, "/", "GS_SWVP_", swvpShaderCount++, ".spv"),
+        str::format(dumpPath, "/", "GS_SWVP_", hash(elements), ".spv"),
         std::ios_base::binary | std::ios_base::trunc);
 
       shader->dump(dumpStream);
+    }
+    
+    // Insert the new module into the lookup table. If another thread
+    // has compiled the same shader in the meantime, we should return
+    // that object instead and discard the newly created module.
+    { std::unique_lock<std::mutex> lock(m_mutex);
+      
+      auto status = m_modules.insert({ elements, shader });
+      if (!status.second)
+        return status.first->second;
     }
 
     return shader;

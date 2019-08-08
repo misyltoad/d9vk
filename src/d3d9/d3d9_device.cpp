@@ -2220,9 +2220,16 @@ namespace dxvk {
     PrepareDraw(false);
 
     if (decl == nullptr) {
-      this->SetFVF(dst->Desc()->FVF);
+      DWORD FVF = dst->Desc()->FVF;
 
-      decl = m_state.vertexDecl;
+      auto iter = m_fvfTable.find(FVF);
+
+      if (iter == m_fvfTable.end()) {
+        decl = new D3D9VertexDecl(this, FVF);
+        m_fvfTable.insert(std::make_pair(FVF, decl));
+      }
+      else
+        decl = iter->second.ptr();
     }
 
     uint32_t offset = DestIndex * decl->GetSize();
@@ -2230,7 +2237,7 @@ namespace dxvk {
     auto slice = dst->GetBufferSlice<D3D9_COMMON_BUFFER_TYPE_REAL>();
          slice = slice.subSlice(offset, slice.length() - offset);
 
-    Rc<DxvkShader> shader = m_swvpEmulator.GenerateGeometryShader(decl);
+    Rc<DxvkShader> shader = m_swvpEmulator.GetShaderModule(decl);
 
     EmitCs([this,
       cVertexCount   = VertexCount,
@@ -2240,18 +2247,20 @@ namespace dxvk {
       cBufferSlice   = slice
     ](DxvkContext* ctx) {
       auto drawInfo = GenerateDrawInfo(D3DPT_POINTLIST, cVertexCount, cInstanceCount);
+
+      if (drawInfo.instanceCount != 1) {
+        drawInfo.instanceCount = 1;
+
+        Logger::warn("D3D9DeviceEx::ProcessVertices: instancing unsupported");
+      }
+
       ApplyPrimitiveType(ctx, D3DPT_POINTLIST);
 
       ctx->bindShader(VK_SHADER_STAGE_GEOMETRY_BIT, cShader);
       ctx->bindResourceBuffer(getSWVPBufferSlot(), cBufferSlice);
-      /*ctx->drawIndexed(
-        drawInfo.vertexCount, 1,//drawInfo.instanceCount,
-        cStartIndex,
-        0, 0);*/
       ctx->draw(
-        drawInfo.vertexCount, 1,//drawInfo.instanceCount,
-        cStartIndex,
-        0);
+        drawInfo.vertexCount, drawInfo.instanceCount,
+        cStartIndex, 0);
       ctx->bindResourceBuffer(getSWVPBufferSlot(), DxvkBufferSlice());
       ctx->bindShader(VK_SHADER_STAGE_GEOMETRY_BIT, nullptr);
     });
@@ -2269,10 +2278,7 @@ namespace dxvk {
       });
     }
 
-    // We need to force a flush here in case the user tries to read back the data.
-    // This allows us to avoid waiting elsewhere in other circumstances.
-    Flush();
-    SynchronizeCsThread();
+    dst->SetReadLocked(true);
 
     return D3D_OK;
   }
@@ -4086,7 +4092,9 @@ namespace dxvk {
       if (respectBounds && pResource->GetMapMode() == D3D9_COMMON_BUFFER_MAP_MODE_BUFFER && !(Flags & D3DLOCK_READONLY))
         dirtyRangeOverlap = pResource->DirtyRange().overlap(pResource->LockRange());
 
-      bool skipWait = (Flags & D3DLOCK_NOOVERWRITE) || (Flags & D3DLOCK_READONLY) || !dirtyRangeOverlap;
+      bool readLocked = pResource->SetReadLocked(false);
+
+      bool skipWait = (Flags & D3DLOCK_NOOVERWRITE) || ( (Flags & D3DLOCK_READONLY) && !readLocked ) || !dirtyRangeOverlap;
 
       // Wait until the resource is no longer in use
       if (!skipWait) {
