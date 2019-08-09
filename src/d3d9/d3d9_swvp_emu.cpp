@@ -8,15 +8,17 @@ namespace dxvk {
 
   // Doesn't compare everything, only what we use in SWVP.
 
-  size_t D3D9SWVPHash::operator () (const D3D9VertexElements& key) const {
+  size_t D3D9VertexDeclHash::operator () (const D3D9VertexElements& key) const {
     DxvkHashState hash;
 
     std::hash<BYTE> bytehash;
     std::hash<WORD> wordhash;
 
     for (auto& element : key) {
+      hash.add(wordhash(element.Stream));
       hash.add(wordhash(element.Offset));
       hash.add(bytehash(element.Type));
+      hash.add(bytehash(element.Method));
       hash.add(bytehash(element.Usage));
       hash.add(bytehash(element.UsageIndex));
     }
@@ -24,18 +26,14 @@ namespace dxvk {
     return hash;
   }
 
-  bool D3D9SWVPEq::operator () (const D3D9VertexElements& a, const D3D9VertexElements& b) const {
+  bool D3D9VertexDeclEq::operator () (const D3D9VertexElements& a, const D3D9VertexElements& b) const {
     if (a.size() != b.size())
       return false;
 
     bool equal = true;
 
-    for (uint32_t i = 0; i < a.size(); i++) {
-      equal &= a[i].Offset      == b[i].Offset;
-      equal &= a[i].Type        == b[i].Type;
-      equal &= a[i].Usage       == b[i].Usage;
-      equal &= a[i].UsageIndex  == b[i].UsageIndex;
-    }
+    for (uint32_t i = 0; i < a.size(); i++)
+      equal &= std::memcmp(&a[i], &b[i], sizeof(a[0])) == 0;
 
     return equal;
   }
@@ -83,12 +81,12 @@ namespace dxvk {
 
   public:
 
-    D3D9SWVPEmulatorGenerator() {
+    D3D9SWVPEmulatorGenerator(const std::string& name) {
       m_entryPointId = m_module.allocateId();
 
       m_module.setDebugSource(
         spv::SourceLanguageUnknown, 0,
-        m_module.addDebugString("SWVPEmu"),
+        m_module.addDebugString(name.c_str()),
         nullptr);
 
       m_module.setMemoryModel(
@@ -307,7 +305,7 @@ namespace dxvk {
 
   };
 
-  Rc<DxvkShader> D3D9SWVPEmulator::GetShaderModule(const D3D9VertexDecl* pDecl) {
+  Rc<DxvkShader> D3D9SWVPEmulator::GetShaderModule(D3D9DeviceEx* pDevice, const D3D9VertexDecl* pDecl) {
     auto& elements = pDecl->GetElements();
 
     // Use the shader's unique key for the lookup
@@ -317,20 +315,27 @@ namespace dxvk {
       if (entry != m_modules.end())
         return entry->second;
     }
+
+    Sha1Hash hash = Sha1Hash::compute(
+      elements.data(), elements.size() * sizeof(elements[0]));
+
+    DxvkShaderKey key = { VK_SHADER_STAGE_GEOMETRY_BIT , hash };
+    std::string name = str::format("SWVP_", key.toString());
     
     // This shader has not been compiled yet, so we have to create a
     // new module. This takes a while, so we won't lock the structure.
-    D3D9SWVPEmulatorGenerator generator;
+    D3D9SWVPEmulatorGenerator generator(name);
     generator.compile(pDecl);
     Rc<DxvkShader> shader = generator.finalize();
+
+    shader->setShaderKey(key);
+    pDevice->GetDXVKDevice()->registerShader(shader);
 
     const std::string dumpPath = env::getEnvVar("DXVK_SHADER_DUMP_PATH");
 
     if (dumpPath.size() != 0) {
-      D3D9SWVPHash hash;
-
       std::ofstream dumpStream(
-        str::format(dumpPath, "/", "GS_SWVP_", hash(elements), ".spv"),
+        str::format(dumpPath, "/", name, ".spv"),
         std::ios_base::binary | std::ios_base::trunc);
 
       shader->dump(dumpStream);

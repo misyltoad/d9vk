@@ -2237,15 +2237,16 @@ namespace dxvk {
     auto slice = dst->GetBufferSlice<D3D9_COMMON_BUFFER_TYPE_REAL>();
          slice = slice.subSlice(offset, slice.length() - offset);
 
-    Rc<DxvkShader> shader = m_swvpEmulator.GetShaderModule(decl);
-
     EmitCs([this,
+      cDecl          = ref(decl),
       cVertexCount   = VertexCount,
       cStartIndex    = SrcStartIndex,
       cInstanceCount = GetInstanceCount(),
-      cShader        = std::move(shader),
-      cBufferSlice   = slice
+      cBufferSlice   = slice,
+      cIndexed       = m_state.indices != nullptr
     ](DxvkContext* ctx) {
+      Rc<DxvkShader> shader = m_swvpEmulator.GetShaderModule(this, cDecl);
+
       auto drawInfo = GenerateDrawInfo(D3DPT_POINTLIST, cVertexCount, cInstanceCount);
 
       if (drawInfo.instanceCount != 1) {
@@ -2256,7 +2257,7 @@ namespace dxvk {
 
       ApplyPrimitiveType(ctx, D3DPT_POINTLIST);
 
-      ctx->bindShader(VK_SHADER_STAGE_GEOMETRY_BIT, cShader);
+      ctx->bindShader(VK_SHADER_STAGE_GEOMETRY_BIT, shader);
       ctx->bindResourceBuffer(getSWVPBufferSlot(), cBufferSlice);
       ctx->draw(
         drawInfo.vertexCount, drawInfo.instanceCount,

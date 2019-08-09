@@ -7,12 +7,13 @@
 namespace dxvk {
 
   class D3D9VertexDecl;
+  class D3D9DeviceEx;
 
-  struct D3D9SWVPHash {
+  struct D3D9VertexDeclHash {
     size_t operator () (const D3D9VertexElements& key) const;
   };
 
-  struct D3D9SWVPEq {
+  struct D3D9VertexDeclEq {
     bool operator () (const D3D9VertexElements& a, const D3D9VertexElements& b) const;
   };
 
@@ -20,15 +21,15 @@ namespace dxvk {
 
   public:
 
-    Rc<DxvkShader> GetShaderModule(const D3D9VertexDecl* pDecl);
+    Rc<DxvkShader> GetShaderModule(D3D9DeviceEx* pDevice, const D3D9VertexDecl* pDecl);
 
   private:
 
-    std::mutex                          m_mutex;
+    std::mutex                                m_mutex;
 
     std::unordered_map<
       D3D9VertexElements, Rc<DxvkShader>,
-      D3D9SWVPHash,       D3D9SWVPEq>       m_modules;
+      D3D9VertexDeclHash, D3D9VertexDeclEq>   m_modules;
 
   };
 
