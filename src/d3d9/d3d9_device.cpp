@@ -5618,8 +5618,13 @@ namespace dxvk {
     const D3D9_COMMON_TEXTURE_DESC* srcDesc = srcTextureInfo->Desc();
     const D3D9_COMMON_TEXTURE_DESC* dstDesc = dstTextureInfo->Desc();
 
-    if (unlikely(dstDesc->MultiSample > D3DMULTISAMPLE_NONMASKABLE))
+	VkSampleCountFlagBits dstSampleCount;
+	DecodeMultiSampleType(dstDesc->MultiSample, dstDesc->MultisampleQuality, &dstSampleCount);
+
+	if (unlikely(dstSampleCount != VK_SAMPLE_COUNT_1_BIT)) {
+      Logger::warn("D3D9DeviceEx::ResolveZ: dstSampleCount != 1. Discarding.");
       return;
+	}
 
     const D3D9_VK_FORMAT_MAPPING srcFormatInfo = LookupFormat(srcDesc->Format);
     const D3D9_VK_FORMAT_MAPPING dstFormatInfo = LookupFormat(dstDesc->Format);
@@ -5645,7 +5650,10 @@ namespace dxvk {
       srcSubresource.mipLevel,
       srcSubresource.arrayLayer, 1 };
 
-    if (dstDesc->MultiSample <= D3DMULTISAMPLE_NONMASKABLE) {
+	VkSampleCountFlagBits srcSampleCount;
+	DecodeMultiSampleType(srcDesc->MultiSample, srcDesc->MultisampleQuality, &srcSampleCount);
+
+    if (unlikely(srcSampleCount == VK_SAMPLE_COUNT_1_BIT)) {
       EmitCs([
         cDstImage  = dstTextureInfo->GetImage(),
         cSrcImage  = srcTextureInfo->GetImage(),
