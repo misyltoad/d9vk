@@ -49,6 +49,13 @@ namespace dxvk {
     DirtyInputLayout,
     DirtyViewportScissor,
     DirtyMultiSampleState,
+
+    DirtyFogState,
+    DirtyFogColor,
+    DirtyFogDensity,
+    DirtyFogStart,
+    DirtyFogEnd,
+
     DirtyFFVertexData,
     DirtyFFVertexShader,
     DirtyFFPixelShader,
@@ -714,6 +721,8 @@ namespace dxvk {
     void Flush();
 
     void CheckForHazards();
+
+    void UpdateFog();
 
     void BindFramebuffer();
 
