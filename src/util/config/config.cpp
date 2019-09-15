@@ -227,6 +227,10 @@ namespace dxvk {
     { R"(\\Dead Space\.exe$)", {{
       { "d3d9.supportDFFormats",                 "False" },
     }} },
+    /* Burnout Paradise                           */
+    { R"(\\BurnoutParadise\.exe$)", {{
+      { "d3d9.allowLockFlagReadonly",       "False" },
+    }} },
   }};
 
 
