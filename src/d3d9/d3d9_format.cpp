@@ -154,7 +154,14 @@ namespace dxvk {
         VK_FORMAT_UNDEFINED,
         VK_IMAGE_ASPECT_COLOR_BIT };
 
-      case D3D9Format::YUY2: return {}; // Unsupported
+      case D3D9Format::YUY2: return {
+        VK_FORMAT_B8G8R8A8_UNORM,
+        VK_FORMAT_UNDEFINED,
+        VK_IMAGE_ASPECT_COLOR_BIT,
+        { VK_COMPONENT_SWIZZLE_IDENTITY, VK_COMPONENT_SWIZZLE_IDENTITY,
+          VK_COMPONENT_SWIZZLE_IDENTITY, VK_COMPONENT_SWIZZLE_IDENTITY },
+        { D3D9VideoFormat_YUY2, { 2u, 1u } }
+      };
 
       case D3D9Format::G8R8_G8B8: return {
         VK_FORMAT_B8G8R8G8_422_UNORM, // This format may have been _SCALED in DX9.
