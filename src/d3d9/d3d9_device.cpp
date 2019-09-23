@@ -126,7 +126,27 @@ namespace dxvk {
 
 
   HRESULT STDMETHODCALLTYPE D3D9DeviceEx::TestCooperativeLevel() {
-    // Equivelant of D3D11/DXGI present tests. We can always present.
+    auto lock = LockDevice();
+
+    // D3D9Ex always returns OK here...
+    // Occlusion is handled in present
+    // and is not a device loss.
+    if (IsExtended())
+      return D3D_OK;
+
+    auto swapchain = GetInternalSwapchain(0);
+
+    if (swapchain->IsOccluded()) {
+      swapchain->MarkResetRequired();
+      return D3DERR_DEVICELOST;
+    }
+    else if (swapchain->IsMismatched()) {
+      swapchain->MarkResetRequired();
+      return D3DERR_DEVICENOTRESET;
+    }
+    else if (swapchain->IsResetRequired())
+      return D3DERR_DEVICENOTRESET;
+
     return D3D_OK;
   }
 
@@ -3526,6 +3546,8 @@ namespace dxvk {
       hr = CreateAdditionalSwapChainEx(pPresentationParameters, pFullscreenDisplayMode, &swapchain);
       if (FAILED(hr))
         throw DxvkError("Reset: failed to create implicit swapchain");
+
+      implicitSwapchain = GetInternalSwapchain(0);
     }
     else {
       hr = implicitSwapchain->Reset(pPresentationParameters, pFullscreenDisplayMode);
@@ -3566,7 +3588,9 @@ namespace dxvk {
 
     UpdateSamplerSpecConsant(0u);
 
-    return D3D_OK;
+    return implicitSwapchain->IsOccluded()
+      ? D3DERR_DEVICELOST
+      : D3D_OK;
   }
 
 

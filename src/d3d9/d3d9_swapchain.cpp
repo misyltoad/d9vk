@@ -20,6 +20,25 @@ namespace dxvk {
   };
 
 
+  class D3D9Filter {
+
+  public:
+
+    D3D9Filter(uint32_t& filter)
+      : m_filter(&filter) {
+      (*m_filter)++;
+    }
+
+    ~D3D9Filter() {
+      (*m_filter)--;
+    }
+
+  private:
+
+    uint32_t* m_filter;
+  };
+
+
   D3D9SwapChainEx::D3D9SwapChainEx(
           D3D9DeviceEx*          pDevice,
           D3DPRESENT_PARAMETERS* pPresentParams,
@@ -48,11 +67,14 @@ namespace dxvk {
     // Apply initial window mode and fullscreen state
     if (!m_presentParams.Windowed && FAILED(EnterFullscreenMode(pPresentParams, pFullscreenDisplayMode)))
       throw DxvkError("D3D9: Failed to set initial fullscreen state");
+
+    m_flags.clr(D3D9SwapchainFlag::MismatchedResolution);
   }
 
 
   D3D9SwapChainEx::~D3D9SwapChainEx() {
     RestoreDisplayMode(m_monitor);
+    D3D9WindowManager::Instance().UnregisterWindow(m_window);
 
     m_device->waitForIdle();
 
@@ -87,6 +109,23 @@ namespace dxvk {
     const RGNDATA* pDirtyRegion,
           DWORD    dwFlags) {
     auto lock = m_parent->LockDevice();
+
+    // D3D9Ex doesn't have device loss
+    // for occlusion.
+    // Resmismatch is handled elsewhere.
+    if (m_parent->IsExtended()) {
+      if (m_flags.test(D3D9SwapchainFlag::WindowOccluded))
+        return S_PRESENT_OCCLUDED;
+    }
+    else {
+      // We can't just magically regain the device!
+      if (m_flags.test(D3D9SwapchainFlag::WindowOccluded)
+       || m_flags.test(D3D9SwapchainFlag::MismatchedResolution))
+        m_flags.set(D3D9SwapchainFlag::RequiresReset);
+
+      if (m_flags.test(D3D9SwapchainFlag::RequiresReset))
+        return D3DERR_DEVICELOST;
+    }
 
     uint32_t presentInterval = m_presentParams.PresentationInterval;
 
@@ -278,12 +317,16 @@ namespace dxvk {
 
     this->NormalizePresentParameters(pPresentParams);
 
+    m_flags.clr(D3D9SwapchainFlag::RequiresReset);
+    m_flags.clr(D3D9SwapchainFlag::MismatchedResolution);
+
     m_dirty    |= m_presentParams.BackBufferFormat   != pPresentParams->BackBufferFormat
                || m_presentParams.BackBufferWidth    != pPresentParams->BackBufferWidth
                || m_presentParams.BackBufferHeight   != pPresentParams->BackBufferHeight
                || m_presentParams.BackBufferCount    != pPresentParams->BackBufferCount;
 
-    bool changeFullscreen = m_presentParams.Windowed != pPresentParams->Windowed;
+    bool changeFullscreen  = m_presentParams.Windowed != pPresentParams->Windowed;
+         changeFullscreen |= m_flags.test(D3D9SwapchainFlag::ReapplyMode);
 
     if (pPresentParams->Windowed) {
       if (changeFullscreen)
@@ -293,6 +336,7 @@ namespace dxvk {
       RECT newRect = { 0, 0, 0, 0 };
       RECT oldRect = { 0, 0, 0, 0 };
       
+      D3D9Filter filter(m_filter);
       ::GetWindowRect(m_window, &oldRect);
       ::SetRect(&newRect, 0, 0, pPresentParams->BackBufferWidth, pPresentParams->BackBufferHeight);
       ::AdjustWindowRectEx(&newRect,
@@ -309,6 +353,7 @@ namespace dxvk {
       else
         ChangeDisplayMode(pPresentParams, pFullscreenDisplayMode);
 
+      D3D9Filter filter(m_filter);
       // Move the window so that it covers the entire output    
       RECT rect;
       GetMonitorRect(GetDefaultMonitor(), &rect);
@@ -317,6 +362,8 @@ namespace dxvk {
         rect.left, rect.top, rect.right - rect.left, rect.bottom - rect.top,
         SWP_FRAMECHANGED | SWP_SHOWWINDOW | SWP_NOACTIVATE);
     }
+
+    m_flags.clr(D3D9SwapchainFlag::ReapplyMode);
 
     m_presentParams = *pPresentParams;
 
@@ -982,6 +1029,13 @@ namespace dxvk {
   HRESULT D3D9SwapChainEx::EnterFullscreenMode(
           D3DPRESENT_PARAMETERS* pPresentParams,
     const D3DDISPLAYMODEEX*      pFullscreenDisplayMode) {    
+    if (!IsWindow(m_window))
+      return D3DERR_INVALIDCALL;
+
+    D3D9Filter filter(m_filter);
+
+    D3D9WindowManager::Instance().RegisterWindow(this, m_window);
+
     // Find a display mode that matches what we need
     ::GetWindowRect(m_window, &m_windowState.rect);
       
@@ -1020,6 +1074,10 @@ namespace dxvk {
   HRESULT D3D9SwapChainEx::LeaveFullscreenMode() {
     if (!IsWindow(m_window))
       return D3DERR_INVALIDCALL;
+
+    D3D9Filter filter(m_filter);
+
+    D3D9WindowManager::Instance().UnregisterWindow(m_window);
     
     if (FAILED(RestoreDisplayMode(m_monitor)))
       Logger::warn("D3D9: LeaveFullscreenMode: Failed to restore display mode");
@@ -1051,6 +1109,8 @@ namespace dxvk {
   HRESULT D3D9SwapChainEx::ChangeDisplayMode(
           D3DPRESENT_PARAMETERS* pPresentParams,
     const D3DDISPLAYMODEEX*      pFullscreenDisplayMode) {
+    D3D9Filter filter(m_filter);
+
     D3DDISPLAYMODEEX mode;
 
     if (pFullscreenDisplayMode == nullptr) {
@@ -1069,6 +1129,8 @@ namespace dxvk {
   HRESULT D3D9SwapChainEx::RestoreDisplayMode(HMONITOR hMonitor) {
     if (hMonitor == nullptr)
       return D3DERR_INVALIDCALL;
+
+    D3D9Filter filter(m_filter);
     
     DEVMODEW devMode = { };
     devMode.dmSize = sizeof(devMode);
@@ -1088,7 +1150,7 @@ namespace dxvk {
     mode.ScanLineOrdering = D3DSCANLINEORDERING_PROGRESSIVE;
     mode.Size             = sizeof(D3DDISPLAYMODEEX);
 
-    return SetMonitorDisplayMode(GetDefaultMonitor(), &mode);
+    return SetMonitorDisplayMode(hMonitor, &mode);
   }
 
   bool    D3D9SwapChainEx::UpdatePresentRegion(const RECT* pSourceRect, const RECT* pDestRect) {
@@ -1137,6 +1199,79 @@ namespace dxvk {
 
     if (!::GetMonitorInfoW(GetDefaultMonitor(), reinterpret_cast<MONITORINFO*>(&m_monInfo)))
       throw DxvkError("D3D9SwapChainEx::GetDisplayModeEx: Failed to query monitor info");
+  }
+
+
+  LRESULT D3D9SwapChainEx::ProcessMessage(D3D9WindowDesc* desc, HWND hWindow, UINT Message, WPARAM WParam, LPARAM LParam) {
+    if (m_filter && Message != WM_DISPLAYCHANGE) {
+      return desc->isUnicode
+        ? ::DefWindowProcW(hWindow, Message, WParam, LParam)
+        : ::DefWindowProcA(hWindow, Message, WParam, LParam);
+    }
+
+    switch (Message) {
+      case WM_DESTROY:
+        D3D9WindowManager::Instance().UnregisterWindow(hWindow);
+        break;
+
+      case WM_DISPLAYCHANGE: {
+        bool mismatch  = WParam != m_presentParams.BackBufferWidth;
+             mismatch |= LParam != m_presentParams.BackBufferHeight;
+             mismatch &= !m_parent->IsExtended()
+                      && !m_presentParams.Windowed;
+
+        m_flags.clr(D3D9SwapchainFlag::MismatchedResolution);
+        if (mismatch)
+          m_flags.set(D3D9SwapchainFlag::MismatchedResolution);
+        break;
+      }
+
+      case WM_ACTIVATEAPP:
+        if (WParam == WA_INACTIVE) {
+          Logger::info("Restoring display mode due to alt-tab. marking occluded.");
+          m_flags.set(D3D9SwapchainFlag::ReapplyMode);
+          m_flags.set(D3D9SwapchainFlag::WindowOccluded);
+
+          RestoreDisplayMode(GetDefaultMonitor());
+
+          if (::IsWindowVisible(hWindow)) {
+            D3D9Filter filter(m_filter);
+            ::ShowWindow(hWindow, SW_MINIMIZE);
+          }
+        }
+        else {
+          D3D9Filter filter(m_filter);
+
+          Logger::info("Clearing occlusion marking.");
+          m_flags.clr(D3D9SwapchainFlag::WindowOccluded);
+
+          // Move the window so that it covers the entire output    
+          RECT rect;
+          GetMonitorRect(GetDefaultMonitor(), &rect);
+
+          ::SetWindowPos(m_window, HWND_TOPMOST,
+            rect.left, rect.top, rect.right - rect.left, rect.bottom - rect.top,
+            SWP_FRAMECHANGED | SWP_SHOWWINDOW | SWP_NOACTIVATE);
+
+          if (m_parent->IsExtended())
+            EnterFullscreenMode(&m_presentParams, nullptr);
+        }
+        break;
+
+      case WM_SYSCOMMAND:
+        if (WParam == SC_RESTORE) {
+          return desc->isUnicode
+            ? ::DefWindowProcW(hWindow, Message, WParam, LParam)
+            : ::DefWindowProcA(hWindow, Message, WParam, LParam);
+        }
+        break;
+
+      default: break;
+    }
+
+    return desc->isUnicode
+      ? ::CallWindowProcW(desc->originalProc, hWindow, Message, WParam, LParam)
+      : ::CallWindowProcA(desc->originalProc, hWindow, Message, WParam, LParam);
   }
 
 }

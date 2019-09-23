@@ -2,6 +2,7 @@
 
 #include "d3d9_device_child.h"
 #include "d3d9_format.h"
+#include "d3d9_window.h"
 
 #include "../dxvk/hud/dxvk_hud.h"
 
@@ -21,6 +22,15 @@ namespace dxvk {
   struct D3D9_VK_GAMMA_CP {
     uint16_t R, G, B, A;
   };
+
+  enum class D3D9SwapchainFlag : uint32_t {
+    ReapplyMode,
+    WindowOccluded,
+    MismatchedResolution,
+    RequiresReset
+  };
+
+  using D3D9SwapchainFlags = Flags<D3D9SwapchainFlag>;
 
   using D3D9SwapChainExBase = D3D9DeviceChild<IDirect3DSwapChain9Ex>;
   class D3D9SwapChainEx final : public D3D9SwapChainExBase {
@@ -76,6 +86,12 @@ namespace dxvk {
 
     void    Invalidate(HWND hWindow);
 
+    bool    IsOccluded()      { return m_flags.test(D3D9SwapchainFlag::WindowOccluded); }
+    bool    IsMismatched()    { return m_flags.test(D3D9SwapchainFlag::MismatchedResolution); }
+    bool    IsResetRequired() { return m_flags.test(D3D9SwapchainFlag::RequiresReset); }
+
+    void    MarkResetRequired() { m_flags.set(D3D9SwapchainFlag::RequiresReset); }
+
   private:
 
     enum BindingIds : uint32_t {
@@ -89,6 +105,9 @@ namespace dxvk {
       LONG exstyle = 0;
       RECT rect    = { 0, 0, 0, 0 };
     };
+
+    uint32_t                m_filter;
+    D3D9SwapchainFlags      m_flags;
 
     D3DPRESENT_PARAMETERS   m_presentParams;
     D3DGAMMARAMP            m_ramp;
@@ -201,6 +220,12 @@ namespace dxvk {
     bool    UpdatePresentRegion(const RECT* pSourceRect, const RECT* pDestRect);
 
     VkExtent2D GetPresentExtent();
+
+  protected:
+
+    friend D3D9WindowManager;
+
+    LRESULT ProcessMessage(D3D9WindowDesc* desc, HWND hWindow, UINT Message, WPARAM WParam, LPARAM LParam);
 
   };
 
