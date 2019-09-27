@@ -4,8 +4,8 @@ subdir('vulkan')
 subdir('dxvk')
 
 if get_option('enable_dxgi')
-  if not get_option('enable_d3d10') and not get_option('enable_d3d11')
-    error('D3D10 and/or D3D11 required for DXGI to properly functionning.')
+  if not get_option('enable_d3d9') and not get_option('enable_d3d10') and not get_option('enable_d3d11')
+    error('D3D9, D3D10 and/or D3D11 required for DXGI to properly functionning.')
   endif
   subdir('dxgi')
 endif
