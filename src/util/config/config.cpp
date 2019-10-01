@@ -231,6 +231,10 @@ namespace dxvk {
     { R"(\\BurnoutParadise\.exe$)", {{
       { "d3d9.allowLockFlagReadonly",       "False" },
     }} },
+    /* Halo 2                                     */
+    { R"(\\halo2\.exe$)", {{
+      { "d3d9.invariantPosition",           "True" },
+    }} },
   }};
 
 
