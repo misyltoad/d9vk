@@ -22,6 +22,7 @@
 #include "d3d9_sampler.h"
 #include "d3d9_fixed_function.h"
 #include "d3d9_swvp_emu.h"
+#include "d3d9_shade_mode_emu.h"
 
 #include <vector>
 #include <type_traits>
@@ -854,6 +855,7 @@ namespace dxvk {
 
     D3D9FFShaderModuleSet           m_ffModules;
     D3D9SWVPEmulator                m_swvpEmulator;
+    D3D9ShadeModeEmulator           m_shadeModeEmulator;
 
     DxvkCsChunkRef AllocCsChunk() {
       DxvkCsChunk* chunk = m_csChunkPool.allocChunk(DxvkCsChunkFlag::SingleUse);
@@ -927,6 +929,9 @@ namespace dxvk {
     std::unordered_map<
       DWORD,
       Com<D3D9VertexDecl>> m_fvfTable;
+
+    bool                            m_csFlatShade = false;
+    D3D9ShadeModeElements           m_csShadeElements;
 
     D3D9InputAssemblyState          m_iaState;
 
@@ -1069,6 +1074,13 @@ namespace dxvk {
     void ApplyPrimitiveType(
       DxvkContext*      pContext,
       D3DPRIMITIVETYPE  PrimType);
+
+    inline void ApplyShadeMode(DxvkContext* ctx, D3DPRIMITIVETYPE PrimitiveType) {
+      if (unlikely(m_csFlatShade)) {
+        ctx->bindShader(VK_SHADER_STAGE_GEOMETRY_BIT,
+          m_shadeModeEmulator.GetShaderModule(this, PrimitiveType, m_csShadeElements));
+      }
+    }
 
     bool UseProgrammableVS();
 

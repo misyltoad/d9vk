@@ -1,6 +1,7 @@
 #pragma once
 
 #include "d3d9_include.h"
+#include "d3d9_shade_mode_emu.h"
 
 #include "d3d9_caps.h"
 
@@ -169,11 +170,15 @@ namespace dxvk {
       return m_shader;
     }
 
+    D3D9ShadeModeElements GetShadeElements() const {
+      return m_shadeElements;
+    }
+
   private:
 
     Rc<DxvkShader> m_shader;
 
-    DxsoIsgn       m_isgn;
+    D3D9ShadeModeElements m_shadeElements;
 
   };
 

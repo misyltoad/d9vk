@@ -2,6 +2,7 @@
 
 #include "d3d9_resource.h"
 #include "../dxso/dxso_module.h"
+#include "d3d9_shade_mode_emu.h"
 
 namespace dxvk {
 
@@ -43,6 +44,10 @@ namespace dxvk {
       return m_isgn;
     }
 
+    D3D9ShadeModeElements GetShadeElements() const {
+      return m_shadeElements;
+    }
+
     const DxsoShaderMetaInfo& GetMeta() const { return m_meta; }
     const DxsoDefinedConstants& GetConstants() const { return m_constants; }
     bool IsSamplerUsed(uint32_t index) const {
@@ -60,6 +65,8 @@ namespace dxvk {
     DxsoIsgn              m_isgn;
     uint32_t              m_usedSamplers;
     uint32_t              m_usedRTs;
+
+    D3D9ShadeModeElements m_shadeElements = { };
 
     DxsoProgramInfo       m_info;
     DxsoShaderMetaInfo    m_meta;

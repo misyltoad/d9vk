@@ -1071,6 +1071,14 @@ namespace dxvk {
                 input ? 0 : m_module.constf32(0.0f),
                 input ? spv::StorageClassInput : spv::StorageClassOutput);
 
+              auto& sgn = input
+                ? m_isgn : m_osgn;
+
+              uint32_t i = sgn.elemCount++;
+
+              sgn.elems[i] .slot = slot;
+              sgn.elems[i].semantic = semantic;
+
               m_entryPointInterfaces.push_back(m_fog.id);
 
               m_module.decorateLocation(m_fog.id, slot);

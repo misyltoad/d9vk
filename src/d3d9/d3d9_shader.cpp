@@ -63,6 +63,17 @@ namespace dxvk {
     m_meta      = pModule->meta();
     m_constants = pModule->constants();
 
+    if (m_info.type() == DxsoProgramType::VertexShader) {
+      auto osgn = pModule->osgn();
+
+      for (uint32_t i = 0; i < m_isgn.elemCount; i++) {
+        m_shadeElements[i].values.Slot     = osgn.elems[i].slot;
+        m_shadeElements[i].values.IsColor0 = osgn.elems[i].semantic == DxsoSemantic{ DxsoUsage::Color, 0 };
+        m_shadeElements[i].values.IsColor1 = osgn.elems[i].semantic == DxsoSemantic{ DxsoUsage::Color, 1 };
+        m_shadeElements[i].values.IsFog    = osgn.elems[i].semantic == DxsoSemantic{ DxsoUsage::Fog,   0 };
+      }
+    }
+
     m_shader->setShaderKey(*pShaderKey);
     
     if (dumpPath.size() != 0) {

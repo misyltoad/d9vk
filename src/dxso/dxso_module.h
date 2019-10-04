@@ -51,6 +51,10 @@ namespace dxvk {
       return m_isgn;
     }
 
+    const DxsoIsgn& osgn() {
+      return m_osgn;
+    }
+
     const DxsoShaderMetaInfo& meta() { return m_meta; }
 
     const DxsoDefinedConstants& constants() { return m_constants; }
@@ -73,6 +77,7 @@ namespace dxvk {
     DxsoCode        m_code;
 
     DxsoIsgn        m_isgn;
+    DxsoIsgn        m_osgn;
     uint32_t        m_usedSamplers;
     uint32_t        m_usedRTs;
 

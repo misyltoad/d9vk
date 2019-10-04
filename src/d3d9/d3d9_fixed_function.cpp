@@ -486,6 +486,8 @@ namespace dxvk {
 
     DxsoIsgn isgn() { return m_isgn; }
 
+    D3D9ShadeModeElements shadeElements() { return m_shadeElements; }
+
   private:
 
     // Returns value for inputs
@@ -524,6 +526,8 @@ namespace dxvk {
 
     DxsoIsgn              m_isgn;
     DxsoIsgn              m_osgn;
+
+    D3D9ShadeModeElements m_shadeElements = { };
 
     uint32_t              m_floatType;
     uint32_t              m_uint32Type;
@@ -611,6 +615,15 @@ namespace dxvk {
       isVS() ? spv::ExecutionModelVertex : spv::ExecutionModelFragment, "main",
       m_entryPointInterfaces.size(),
       m_entryPointInterfaces.data());
+
+    if (m_programType == DxsoProgramType::VertexShader) {
+      for (uint32_t i = 0; i < m_osgn.elemCount; i++) {
+        m_shadeElements[i].values.Slot     = m_osgn.elems[i].slot;
+        m_shadeElements[i].values.IsColor0 = m_osgn.elems[i].semantic == DxsoSemantic{ DxsoUsage::Color, 0 };
+        m_shadeElements[i].values.IsColor1 = m_osgn.elems[i].semantic == DxsoSemantic{ DxsoUsage::Color, 1 };
+        m_shadeElements[i].values.IsFog    = m_osgn.elems[i].semantic == DxsoSemantic{ DxsoUsage::Fog,   0 };
+      }
+    }
 
     DxvkShaderOptions shaderOptions = { };
 
@@ -1875,8 +1888,8 @@ namespace dxvk {
       Key, name,
       pDevice->GetOptions());
 
-    m_shader = compiler.compile();
-    m_isgn   = compiler.isgn();
+    m_shader        = compiler.compile();
+    m_shadeElements = compiler.shadeElements();
 
     Dump(Key, name);
 
@@ -1899,7 +1912,6 @@ namespace dxvk {
       pDevice->GetOptions());
 
     m_shader = compiler.compile();
-    m_isgn   = compiler.isgn();
 
     Dump(Key, name);
 

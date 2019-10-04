@@ -1875,6 +1875,14 @@ namespace dxvk {
             break;
           }
 
+        case D3DRS_SHADEMODE:
+          EmitCs([this, cValue = Value] (DxvkContext* ctx) {
+            m_csFlatShade = cValue == D3DSHADE_FLAT;
+            if (!m_csFlatShade)
+              ctx->bindShader(VK_SHADER_STAGE_GEOMETRY_BIT, nullptr);
+          });
+          break;
+
         default:
           static bool s_errorShown[256];
 
@@ -2197,6 +2205,7 @@ namespace dxvk {
       auto drawInfo = GenerateDrawInfo(cPrimType, cPrimCount, cInstanceCount);
 
       ApplyPrimitiveType(ctx, cPrimType);
+      ApplyShadeMode(ctx, cPrimType);
 
       ctx->draw(
         drawInfo.vertexCount, drawInfo.instanceCount,
@@ -2228,6 +2237,7 @@ namespace dxvk {
       auto drawInfo = GenerateDrawInfo(cPrimType, cPrimCount, cInstanceCount);
 
       ApplyPrimitiveType(ctx, cPrimType);
+      ApplyShadeMode(ctx, cPrimType);
 
       ctx->drawIndexed(
         drawInfo.vertexCount, drawInfo.instanceCount,
@@ -2265,6 +2275,7 @@ namespace dxvk {
       auto drawInfo = GenerateDrawInfo(cPrimType, cPrimCount, cInstanceCount);
 
       ApplyPrimitiveType(ctx, cPrimType);
+      ApplyShadeMode(ctx, cPrimType);
 
       ctx->bindVertexBuffer(0, cBufferSlice, cStride);
       ctx->draw(
@@ -2319,6 +2330,7 @@ namespace dxvk {
       auto drawInfo = GenerateDrawInfo(cPrimType, cPrimCount, cInstanceCount);
 
       ApplyPrimitiveType(ctx, cPrimType);
+      ApplyShadeMode(ctx, cPrimType);
 
       ctx->bindVertexBuffer(0, cBufferSlice.subSlice(0, cVertexSize), cStride);
       ctx->bindIndexBuffer(cBufferSlice.subSlice(cVertexSize, cBufferSlice.length() - cVertexSize), cIndexType);
@@ -5575,10 +5587,15 @@ namespace dxvk {
         DxsoProgramType                   ShaderStage,
   const D3D9CommonShader*                 pShaderModule) {
     EmitCs([
-      cStage  = GetShaderStage(ShaderStage),
-      cShader = pShaderModule->GetShader()
+      this,
+      cStage         = GetShaderStage(ShaderStage),
+      cShader        = pShaderModule->GetShader(),
+      cShadeElements = pShaderModule->GetShadeElements()
     ] (DxvkContext* ctx) {
       ctx->bindShader(cStage, cShader);
+
+      if (cStage == VK_SHADER_STAGE_VERTEX_BIT)
+        m_csShadeElements = cShadeElements;
     });
   }
 
@@ -5929,6 +5946,7 @@ namespace dxvk {
       ](DxvkContext* ctx) {
         auto shader = cShaders.GetShaderModule(this, cKey);
         ctx->bindShader(VK_SHADER_STAGE_VERTEX_BIT, shader.GetShader());
+        m_csShadeElements = shader.GetShadeElements();
       });
     }
 
