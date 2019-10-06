@@ -378,6 +378,25 @@ namespace dxvk {
     
     return this->constComposite(vectorTypeId, count, args.data());
   }
+
+
+  uint32_t SpirvModule::constbReplicant(
+          bool                    replicant,
+          uint32_t                count) {
+    std::array<uint32_t, 4> args = {{
+      this->constBool(replicant), this->constBool(replicant),
+      this->constBool(replicant), this->constBool(replicant),
+    }};
+
+    // Can't make a scalar composite.
+    if (count == 1)
+      return args[0];
+    
+    uint32_t scalarTypeId = this->defBoolType();
+    uint32_t vectorTypeId = this->defVectorType(scalarTypeId, count);
+    
+    return this->constComposite(vectorTypeId, count, args.data());
+  }
   
   
   uint32_t SpirvModule::constComposite(
