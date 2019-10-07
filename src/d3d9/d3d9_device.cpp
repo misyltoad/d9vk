@@ -344,8 +344,7 @@ namespace dxvk {
 
 
   HRESULT STDMETHODCALLTYPE D3D9DeviceEx::SetDialogBoxMode(BOOL bEnableDialogs) {
-    Logger::warn("D3D9DeviceEx::SetDialogBoxMode: Stub");
-    return D3D_OK;
+    return GetInternalSwapchain(0)->SetDialogBoxMode(bEnableDialogs);
   }
 
 

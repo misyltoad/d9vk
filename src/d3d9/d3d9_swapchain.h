@@ -6,6 +6,7 @@
 #include "../dxvk/hud/dxvk_hud.h"
 
 #include <vector>
+#include <optional>
 
 namespace dxvk {
 
@@ -68,6 +69,8 @@ namespace dxvk {
 
     HRESULT WaitForVBlank();
 
+    HRESULT SetDialogBoxMode(BOOL bEnableDialogs);
+
     void    SetGammaRamp(
             DWORD         Flags,
       const D3DGAMMARAMP* pRamp);
@@ -91,6 +94,9 @@ namespace dxvk {
     };
 
     D3DPRESENT_PARAMETERS   m_presentParams;
+    D3DDISPLAYMODEEX        m_displayMode;
+    bool                    m_useDisplayMode = false;
+
     D3DGAMMARAMP            m_ramp;
 
     Rc<DxvkDevice>          m_device;
@@ -132,6 +138,8 @@ namespace dxvk {
 
     bool                    m_dirty    = true;
     bool                    m_vsync    = true;
+
+    bool                    m_dialogBoxMode = false;
 
     HWND                    m_window   = nullptr;
     HMONITOR                m_monitor  = nullptr;

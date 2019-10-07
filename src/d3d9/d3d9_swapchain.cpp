@@ -320,6 +320,11 @@ namespace dxvk {
 
     m_presentParams = *pPresentParams;
 
+    if (pFullscreenDisplayMode)
+      m_displayMode = *pFullscreenDisplayMode;
+
+    m_useDisplayMode = pFullscreenDisplayMode != nullptr;
+
     if (changeFullscreen)
       SetGammaRamp(0, &m_ramp);
 
@@ -331,6 +336,18 @@ namespace dxvk {
 
   HRESULT D3D9SwapChainEx::WaitForVBlank() {
     Logger::warn("D3D9SwapChainEx::WaitForVBlank: Stub");
+    return D3D_OK;
+  }
+
+
+  HRESULT D3D9SwapChainEx::SetDialogBoxMode(BOOL bEnableDialogs) {
+    m_dialogBoxMode = bEnableDialogs;
+
+    if (!m_presentParams.Windowed) {
+      LeaveFullscreenMode();
+      EnterFullscreenMode(&m_presentParams, m_useDisplayMode ? &m_displayMode : nullptr);
+    }
+
     return D3D_OK;
   }
 
@@ -1008,8 +1025,10 @@ namespace dxvk {
     // Move the window so that it covers the entire output    
     RECT rect;
     GetMonitorRect(GetDefaultMonitor(), &rect);
+
+    HWND insertAfter = m_dialogBoxMode ? HWND_TOP : HWND_TOPMOST;
     
-    ::SetWindowPos(m_window, HWND_TOPMOST,
+    ::SetWindowPos(m_window, insertAfter,
       rect.left, rect.top, rect.right - rect.left, rect.bottom - rect.top,
       SWP_FRAMECHANGED | SWP_SHOWWINDOW | SWP_NOACTIVATE);
     
