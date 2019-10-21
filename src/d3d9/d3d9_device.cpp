@@ -4077,14 +4077,8 @@ namespace dxvk {
     if (unlikely(pResource->MarkLocked(Subresource, true)))
       return D3DERR_INVALIDCALL;
 
-    if (unlikely((Flags & D3DLOCK_DISCARD) && (Flags & D3DLOCK_READONLY)))
+    if (unlikely((Flags & (D3DLOCK_DISCARD | D3DLOCK_READONLY)) == (D3DLOCK_DISCARD | D3DLOCK_READONLY)))
       return D3DERR_INVALIDCALL;
-
-    if (unlikely(!m_d3d9Options.allowLockFlagReadonly))
-      Flags &= ~D3DLOCK_READONLY;
-
-    if (unlikely((Flags & (D3DLOCK_DISCARD | D3DLOCK_NOOVERWRITE)) == (D3DLOCK_DISCARD | D3DLOCK_NOOVERWRITE)))
-      Flags &= ~D3DLOCK_DISCARD;
 
     auto& desc = *(pResource->Desc());
 
@@ -4116,14 +4110,14 @@ namespace dxvk {
                   && lockExtent.depth  >= levelExtent.depth;
     }
 
-    // Discard is ignored if the resource is not dynamic
-
     // If we are not locking the entire image
     // a partial discard is meant to occur.
     // We can't really implement that, so just ignore discard
     // if we are not locking the full resource
 
-    if (!(desc.Usage & D3DUSAGE_DYNAMIC) || !fullResource || desc.Pool != D3DPOOL_DEFAULT)
+    // DISCARD is also ignored for MANAGED and SYSTEMEM.
+
+    if (!fullResource || desc.Pool != D3DPOOL_DEFAULT)
       Flags &= ~D3DLOCK_DISCARD;
 
     pResource->SetLockFlags(Subresource, Flags);
@@ -4153,13 +4147,12 @@ namespace dxvk {
       // calling app promises not to overwrite data that is in use
       // or is reading. Remember! This will only trigger for MANAGED resources
       // that cannot get affected by GPU, therefore readonly is A-OK for NOT waiting.
-      const bool noOverwrite  = Flags & D3DLOCK_NOOVERWRITE;
-      const bool readOnly     = Flags & D3DLOCK_READONLY;
+      const bool readOnly = Flags & D3DLOCK_READONLY;
       const bool skipWait = (readOnly && managed) || scratch || (readOnly && systemmem);
 
       if (alloced)
         std::memset(physSlice.mapPtr, 0, physSlice.length);
-      else if (!noOverwrite && !skipWait) {
+      else if (!skipWait) {
         if (!WaitForResource(mappedBuffer, Flags))
           return D3DERR_WASSTILLDRAWING;
       }
@@ -4248,9 +4241,6 @@ namespace dxvk {
       if (alloced && !dirty)
         std::memset(physSlice.mapPtr, 0, physSlice.length);
       else {
-        // We can't implement NOOVERWRITE for this path
-        // because of the copyImageToBuffer above,
-        // and the fact that we are a backed image.
         if (!WaitForResource(mappedBuffer, Flags))
           return D3DERR_WASSTILLDRAWING;
       }
@@ -4381,41 +4371,56 @@ namespace dxvk {
     if (unlikely(ppbData == nullptr))
       return D3DERR_INVALIDCALL;
 
-    if (!m_d3d9Options.allowLockFlagReadonly)
-      Flags &= ~D3DLOCK_READONLY;
-
     auto& desc = *pResource->Desc();
 
     // Ignore DISCARD if NOOVERWRITE is set
-    if ((Flags & (D3DLOCK_DISCARD | D3DLOCK_NOOVERWRITE)) == (D3DLOCK_DISCARD | D3DLOCK_NOOVERWRITE))
+    if (unlikely((Flags & (D3DLOCK_DISCARD | D3DLOCK_NOOVERWRITE)) == (D3DLOCK_DISCARD | D3DLOCK_NOOVERWRITE)))
       Flags &= ~D3DLOCK_DISCARD;
 
-    // Ignore DISCARD/NOOVERWRITE if the buffer is non-dynamic.
-    if (!(desc.Usage & D3DUSAGE_DYNAMIC))
+    // Ignore DISCARD and NOOVERWRITE if the buffer is not DEFAULT pool.
+    if (desc.Pool != D3DPOOL_DEFAULT)
       Flags &= ~(D3DLOCK_DISCARD | D3DLOCK_NOOVERWRITE);
 
-    Rc<DxvkBuffer> mappingBuffer = pResource->GetBuffer<D3D9_COMMON_BUFFER_TYPE_MAPPING>();
+    // Ignore READONLY if we are a WRITEONLY resource.
+    if (desc.Usage & D3DUSAGE_WRITEONLY)
+      Flags &= ~D3DLOCK_READONLY;
 
-    DxvkBufferSliceHandle physSlice;
+    // Ignore DONOTWAIT if we are DYNAMIC
+    // Yes... D3D9 is a good API.
+    if (desc.Usage & D3DUSAGE_DYNAMIC)
+      Flags &= ~D3DLOCK_DONOTWAIT;
+
+    // Ignore read-only locks for anything
+    // other than MANAGED.
+    if (!IsPoolManaged(desc.Pool))
+      Flags &= ~D3DLOCK_READONLY;
+
+    // We always offset the resultant ptr by OffsetToLocks value, even if
+    // we don't take that into account.
+    const uint32_t ptrOffset = OffsetToLock;
 
     // We can only respect this for these cases -- otherwise R/W OOB still get copied on native
     // and some stupid games depend on that.
-    bool respectBounds  = (desc.Usage & D3DUSAGE_DYNAMIC) || IsPoolManaged(desc.Pool);
-    // These cases... we need to lock everything, so just
-    // don't respect the bounds.
-         respectBounds &= !(Flags & D3DLOCK_DISCARD);
-         respectBounds &= SizeToLock != 0;
+    const bool respectBounds = !(Flags & D3DLOCK_DISCARD) &&
+                               SizeToLock != 0            &&
+                               ((desc.Usage & D3DUSAGE_DYNAMIC) || IsPoolManaged(desc.Pool));
 
-    uint32_t ptrOffset = OffsetToLock;
-
+    // If we don't respect the bounds, encompass it all in our tests/checks,
+    // Otherwise clamp the size to the bounds.
     if (!respectBounds) {
       OffsetToLock = 0;
       SizeToLock   = desc.Size;
     }
-    else
-      SizeToLock = std::min(SizeToLock, desc.Size - OffsetToLock);
+    else {
+      OffsetToLock = std::min(OffsetToLock, desc.Size);
+      SizeToLock   = std::min(SizeToLock,   desc.Size - OffsetToLock);
+    }
 
     pResource->LockRange().Conjoin(D3D9Range(OffsetToLock, OffsetToLock + SizeToLock));
+
+    Rc<DxvkBuffer> mappingBuffer = pResource->GetBuffer<D3D9_COMMON_BUFFER_TYPE_MAPPING>();
+
+    DxvkBufferSliceHandle physSlice;
 
     if (Flags & D3DLOCK_DISCARD) {
       // Allocate a new backing slice for the buffer and set
@@ -4433,20 +4438,25 @@ namespace dxvk {
     else {
       // NOOVERWRITE promises that they will not write in a currently used area.
       // READONLY promises they will only read -- and we never write to these buffers from the GPU
+      //   - (aside from specific cases, SetReadLocked returns a value if we need to)
       // Therefore we can skip waiting for these two cases.
+      // We can also skip waiting if there is not dirty range overlap, if we are one of those resources.
       bool dirtyRangeOverlap = true;
 
+      // If we are respecting the bounds, and we are buffer-backed and not-read-only then we can overlap
+      // our bounds, otherwise we just ignore this and go for it all the time.
       if (respectBounds && pResource->GetMapMode() == D3D9_COMMON_BUFFER_MAP_MODE_BUFFER && !(Flags & D3DLOCK_READONLY))
         dirtyRangeOverlap = pResource->DirtyRange().Overlaps(pResource->LockRange());
 
-      bool readLocked = pResource->SetReadLocked(false);
+      const bool skipWait = (Flags & D3DLOCK_NOOVERWRITE) ||
+                            ((Flags & D3DLOCK_READONLY) && !pResource->GetReadLocked()) ||
+                            !dirtyRangeOverlap;
 
-      bool skipWait = (Flags & D3DLOCK_NOOVERWRITE) || ( (Flags & D3DLOCK_READONLY) && !readLocked ) || !dirtyRangeOverlap;
-
-      // Wait until the resource is no longer in use
       if (!skipWait) {
-        if (!(Flags & D3DLOCK_DONOTWAIT))
+        if (!(Flags & D3DLOCK_DONOTWAIT)) {
+          pResource->SetReadLocked(false);
           pResource->DirtyRange().Clear();
+        }
 
         if (!WaitForResource(mappingBuffer, Flags))
           return D3DERR_WASSTILLDRAWING;
@@ -4458,13 +4468,15 @@ namespace dxvk {
       physSlice = pResource->GetMappedSlice();
     }
 
-    uint8_t* data  = reinterpret_cast<uint8_t*>(physSlice.mapPtr);
-             data += ptrOffset;
+    uint8_t* data = reinterpret_cast<uint8_t*>(physSlice.mapPtr);
+    data += ptrOffset;
 
     *ppbData = reinterpret_cast<void*>(data);
 
     DWORD oldFlags = pResource->GetMapFlags(Flags);
 
+    // We need to remove the READONLY flags from the map flags
+    // if there was ever a non-readonly upload.
     if (!(Flags & D3DLOCK_READONLY))
       oldFlags &= ~D3DLOCK_READONLY;
 
