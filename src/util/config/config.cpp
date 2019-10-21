@@ -217,9 +217,8 @@ namespace dxvk {
       { "d3d9.invariantPosition",           "True" },
     }} },
     /* Halo CE/HaloPC
-       Regex forced case insensitive as some
-       distributions come with all caps filenames.*/
-    { R"(\\(?i)(halo|haloce)\.exe)", {{
+       Some distributions come with all caps filenames.*/
+    { R"(\\(halo\.exe|haloce\.exe|HALO\.EXE|HALOCE\.EXE)", {{
       // Game enables minor decal layering fixes
       // specifically when it detects AMD.
       // Avoids chip being detected as unsupported
