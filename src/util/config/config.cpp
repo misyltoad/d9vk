@@ -218,7 +218,7 @@ namespace dxvk {
     }} },
     /* Halo CE/HaloPC
        Some distributions come with all caps filenames.*/
-    { R"(\\(halo\.exe|haloce\.exe|HALO\.EXE|HALOCE\.EXE)", {{
+    { R"(\\(halo\.exe|haloce\.exe|HALO\.EXE|HALOCE\.EXE))", {{
       // Game enables minor decal layering fixes
       // specifically when it detects AMD.
       // Avoids chip being detected as unsupported
