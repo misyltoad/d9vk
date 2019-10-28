@@ -5,4 +5,4 @@ d9vk:
   artifacts:
     name: "d9vk-${CI_COMMIT_REF_NAME}.${CI_COMMIT_SHA}"
     paths:
-    - build/dxvk-release
+    - build/d9vk-release
