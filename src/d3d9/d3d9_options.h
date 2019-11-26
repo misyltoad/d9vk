@@ -103,6 +103,9 @@ namespace dxvk {
 
     /// Support VCACHE query
     bool supportVCache;
+
+    /// Disable 64:27 modes
+    bool disable64to27Modes;
   };
 
 }
