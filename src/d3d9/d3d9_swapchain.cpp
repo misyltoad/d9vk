@@ -115,6 +115,7 @@ namespace dxvk {
     bool recreate = false;
     recreate   |= m_presenter == nullptr;
     recreate   |= window != m_window;    
+    recreate   |= m_dialogModeChanged;
 
     m_window    = window;
 
@@ -383,6 +384,12 @@ namespace dxvk {
   }
 
 
+  void    D3D9SwapChainEx::SetDialogMode(bool enableDialogs) {
+    m_dialogModeChanged = m_dialogMode != enableDialogs;
+    m_dialogMode        = enableDialogs;
+  }
+
+
   void D3D9SwapChainEx::NormalizePresentParameters(D3DPRESENT_PARAMETERS* pPresentParams) {
     if (pPresentParams->hDeviceWindow == nullptr)
       pPresentParams->hDeviceWindow    = m_parent->GetWindow();
@@ -594,7 +601,8 @@ namespace dxvk {
       m_device->adapter()->vki(),
       m_device->vkd(),
       presenterDevice,
-      presenterDesc);
+      presenterDesc,
+      !m_dialogMode);
     
     CreateRenderTargetViews();
   }

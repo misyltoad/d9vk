@@ -358,7 +358,15 @@ namespace dxvk {
 
 
   HRESULT STDMETHODCALLTYPE D3D9DeviceEx::SetDialogBoxMode(BOOL bEnableDialogs) {
-    Logger::warn("D3D9DeviceEx::SetDialogBoxMode: Stub");
+    D3D9DeviceLock lock = LockDevice();
+
+    auto* swapchain = GetInternalSwapchain(0);
+
+    if (unlikely(swapchain == nullptr))
+      return D3DERR_INVALIDCALL;
+
+    swapchain->SetDialogMode(bEnableDialogs);
+
     return D3D_OK;
   }
 

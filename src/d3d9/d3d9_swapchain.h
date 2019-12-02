@@ -78,6 +78,8 @@ namespace dxvk {
 
     void    Invalidate(HWND hWindow);
 
+    void    SetDialogMode(bool enableDialogs);
+
   private:
 
     enum BindingIds : uint32_t {
@@ -146,6 +148,9 @@ namespace dxvk {
     MONITORINFOEXW          m_monInfo;
 
     WindowState             m_windowState;
+
+    bool                    m_dialogMode        = false;
+    bool                    m_dialogModeChanged = false;
 
     void PresentImage(UINT PresentInterval);
 
