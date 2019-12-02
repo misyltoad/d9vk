@@ -9,8 +9,13 @@ namespace dxvk::vk {
     const Rc<InstanceFn>& vki,
     const Rc<DeviceFn>&   vkd,
           PresenterDevice device,
-    const PresenterDesc&  desc)
+    const PresenterDesc&  desc,
+          bool            mayFullscreen)
   : m_vki(vki), m_vkd(vkd), m_device(device), m_window(window) {
+    m_fullscreenMode = mayFullscreen
+      ? VK_FULL_SCREEN_EXCLUSIVE_DEFAULT_EXT
+      : VK_FULL_SCREEN_EXCLUSIVE_DISALLOWED_EXT;
+
     if (createSurface() != VK_SUCCESS)
       throw DxvkError("Failed to create surface");
 
@@ -375,10 +380,15 @@ namespace dxvk::vk {
   VkResult Presenter::createSurface() {
     HINSTANCE instance = reinterpret_cast<HINSTANCE>(
       GetWindowLongPtr(m_window, GWLP_HINSTANCE));
+
+    VkSurfaceFullScreenExclusiveInfoEXT fullscreenInfo;
+    fullscreenInfo.sType               = VK_STRUCTURE_TYPE_SURFACE_FULL_SCREEN_EXCLUSIVE_INFO_EXT;
+    fullscreenInfo.pNext               = nullptr;
+    fullscreenInfo.fullScreenExclusive = m_fullscreenMode;
     
     VkWin32SurfaceCreateInfoKHR info;
     info.sType      = VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR;
-    info.pNext      = nullptr;
+    info.pNext      = &fullscreenInfo;
     info.flags      = 0;
     info.hinstance  = instance;
     info.hwnd       = m_window;

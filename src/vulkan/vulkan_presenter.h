@@ -88,7 +88,8 @@ namespace dxvk::vk {
       const Rc<InstanceFn>& vki,
       const Rc<DeviceFn>&   vkd,
             PresenterDevice device,
-      const PresenterDesc&  desc);
+      const PresenterDesc&  desc,
+            bool            mayFullscreen = true);
     
     ~Presenter();
 
@@ -185,6 +186,8 @@ namespace dxvk::vk {
 
     uint32_t m_imageIndex = 0;
     uint32_t m_frameIndex = 0;
+
+    VkFullScreenExclusiveEXT m_fullscreenMode;
 
     VkResult getSupportedFormats(
             std::vector<VkSurfaceFormatKHR>& formats);
