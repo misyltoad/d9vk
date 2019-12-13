@@ -2,6 +2,8 @@
 
 #include "../dxvk_device.h"
 
+#include "../util/util_time.h"
+
 #include "dxvk_hud_font.h"
 
 namespace dxvk::hud {
@@ -86,6 +88,8 @@ namespace dxvk::hud {
     void beginFrame(
       const Rc<DxvkContext>&  context,
             VkExtent2D        surfaceSize);
+
+    HudColor generateRainbowColor(HudColor color);
     
     void drawText(
             float             size,
@@ -129,6 +133,8 @@ namespace dxvk::hud {
     
     Rc<DxvkBuffer>      m_vertexBuffer;
     VkDeviceSize        m_vertexOffset = 0;
+
+    dxvk::high_resolution_clock::time_point m_startTime;
     
     DxvkBufferSlice allocVertexBuffer(
             VkDeviceSize      dataSize);

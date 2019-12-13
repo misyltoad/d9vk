@@ -6,6 +6,8 @@
 #include <hud_text_frag.h>
 #include <hud_text_vert.h>
 
+#include <cmath>
+
 namespace dxvk::hud {
   
   HudRenderer::HudRenderer(const Rc<DxvkDevice>& device)
@@ -16,7 +18,8 @@ namespace dxvk::hud {
     m_fontImage     (createFontImage(device)),
     m_fontView      (createFontView(device)),
     m_fontSampler   (createFontSampler(device)),
-    m_vertexBuffer  (createVertexBuffer(device)) {
+    m_vertexBuffer  (createVertexBuffer(device)),
+    m_startTime     (dxvk::high_resolution_clock::now()) {
     this->initFontTexture(device);
     this->initCharMap();
   }
@@ -38,6 +41,45 @@ namespace dxvk::hud {
     m_surfaceSize = surfaceSize;
     m_context     = context;
   }
+
+
+  static HudColor HSVToHudColor(float h, float s, float v, float a) {
+    float hh = std::fmod(h, 360.0f) / 60.0f;
+
+    uint32_t i = static_cast<uint32_t>(hh);
+
+    float ff = hh - float(i);
+
+    float p = v * (1.0f - s);
+    float q = v * (1.0f - (s * ff));
+    float t = v * (1.0f - (s * (1.0f - ff)));
+
+    switch (i) {
+      case 0: return { v, t, p, a };
+      case 1: return { q, v, p, a };
+      case 2: return { p, v, t, a };
+      case 3: return { p, q, v, a };
+      case 4: return { t, p, v, a };
+      default:
+      case 5: return { v, p, q, a };
+    }
+  }
+
+
+  HudColor HudRenderer::generateRainbowColor(HudColor color) {
+    auto now = dxvk::high_resolution_clock::now();
+
+    float secs = std::chrono::duration<float, std::ratio<1>>(now - m_startTime).count();
+
+    float extra = color.r +
+                  color.g * 2.0f +
+                  color.b * 3.0f;
+    extra /= 3.0f;
+
+    float h = (secs + extra) * 360.0f;
+
+    return HSVToHudColor(h, 0.75f, 1.0f, color.a);
+  }
   
   
   void HudRenderer::drawText(
@@ -46,6 +88,8 @@ namespace dxvk::hud {
           HudColor          color,
     const std::string&      text) {
     beginTextRendering();
+
+    color = generateRainbowColor(color);
 
     uint32_t vertexCount = 6 * text.size();
 
